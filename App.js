@@ -20,6 +20,7 @@ import FoodSearchScreen from './screens/FoodSearchScreen';
 import TrainingScreen from './screens/TrainingScreen';
 import CreateWorkoutPlanScreen from './screens/CreateWorkoutPlanScreen';
 import WorkoutPlanDetailScreen from './screens/WorkoutPlanDetailScreen';
+import ProgressScreen from './screens/ProgressScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -63,6 +64,15 @@ const MainTabs = () => {
         options={{
           tabBarIcon: ({ color, size }) => (
             <Icon name="user" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Progress"
+        component={ProgressScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="trending-up" size={size} color={color} />
           ),
         }}
       />
