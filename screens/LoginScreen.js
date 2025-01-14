@@ -108,7 +108,8 @@ const LoginScreen = () => {
   const handleSubmit = () => {
     if (validateForm()) {
       // Navigate to the MainDrawer instead of Home
-      navigation.navigate('MainDrawer');
+      navigation.navigate('Main');
+
     }
   };
 

@@ -1,178 +1,131 @@
 import React, { useState } from 'react';
-import {
-  View,
-  KeyboardAvoidingView,
-  TextInput,
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  Platform,
-  ScrollView,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 
-const PersonalRegistration = () => {
-  const navigation = useNavigation();
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    specialty: '',
-    certification: '',
-  });
-  const [errors, setErrors] = useState({});
+const RegisterTrainerScreen = ({ navigation }) => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [specialty, setSpecialty] = useState('');
 
-  const validateForm = () => {
-    const newErrors = {};
-    
-    if (!formData.name) newErrors.name = 'Nome é obrigatório';
-    if (!formData.email) newErrors.email = 'Email é obrigatório';
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email inválido';
-    if (!formData.password) newErrors.password = 'Senha é obrigatória';
-    else if (formData.password.length < 6) newErrors.password = 'Senha deve ter no mínimo 6 caracteres';
-    if (!formData.specialty) newErrors.specialty = 'Especialidade é obrigatória';
-    if (!formData.certification) newErrors.certification = 'Certificação é obrigatória';
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = () => {
-    if (validateForm()) {
-      console.log('Form submitted:', formData);
-      // In a real app, you'd send this data to your backend
-      // For now, we'll just navigate to the Home screen
-      navigation.navigate('Home');
+  const handleRegister = () => {
+    if (!name || !email || !password || !confirmPassword || !specialty) {
+      Alert.alert('Erro', 'Por favor, preencha todos os campos.');
+      return;
     }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Erro', 'As senhas não coincidem.');
+      return;
+    }
+
+    // Aqui você pode adicionar a lógica de registro, como enviar dados para uma API.
+    Alert.alert('Sucesso', 'Cadastro realizado com sucesso!');
+    navigation.navigate('Login'); // Redireciona para a tela de login após o registro.
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Cadastro de Personal Trainer</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Registrar Treinador</Text>
 
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Nome completo"
-            value={formData.name}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
-          />
-          {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+      <TextInput
+        style={styles.input}
+        placeholder="Nome Completo"
+        placeholderTextColor="#666"
+        value={name}
+        onChangeText={setName}
+      />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={formData.email}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, email: text }))}
-          />
-          {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        placeholderTextColor="#666"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+      />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Senha"
-            secureTextEntry
-            value={formData.password}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, password: text }))}
-          />
-          {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+      <TextInput
+        style={styles.input}
+        placeholder="Senha"
+        placeholderTextColor="#666"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Especialidade"
-            value={formData.specialty}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, specialty: text }))}
-          />
-          {errors.specialty && <Text style={styles.errorText}>{errors.specialty}</Text>}
+      <TextInput
+        style={styles.input}
+        placeholder="Confirmar Senha"
+        placeholderTextColor="#666"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        secureTextEntry
+      />
 
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Certificações"
-            multiline
-            numberOfLines={4}
-            value={formData.certification}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, certification: text }))}
-          />
-          {errors.certification && <Text style={styles.errorText}>{errors.certification}</Text>}
-        </View>
+      <TextInput
+        style={styles.input}
+        placeholder="Especialidade (ex: Musculação, Yoga)"
+        placeholderTextColor="#666"
+        value={specialty}
+        onChangeText={setSpecialty}
+      />
 
-        <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-          <Text style={styles.buttonText}>Cadastrar</Text>
-        </TouchableOpacity>
+      <TouchableOpacity style={styles.button} onPress={handleRegister}>
+        <Text style={styles.buttonText}>Registrar</Text>
+      </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.linkButton}
-          onPress={() => navigation.navigate('RegisterUser')}
-        >
-          <Text style={styles.linkText}>Sou Aluno</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+        <Text style={styles.loginLink}>Já tem uma conta? Faça login</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#191919',
-  },
-  scrollContent: {
     flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
+    backgroundColor: '#191919',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFF',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  inputContainer: {
-    width: '100%',
+    color: '#fff',
     marginBottom: 20,
   },
   input: {
-    backgroundColor: '#FFF',
-    borderRadius: 7,
-    padding: 10,
-    marginBottom: 10,
+    width: '100%',
+    height: 50,
+    backgroundColor: '#2c2c2c',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    color: '#fff',
     fontSize: 16,
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
   },
   button: {
+    width: '100%',
+    height: 50,
     backgroundColor: '#35AAFF',
-    borderRadius: 7,
-    padding: 15,
+    borderRadius: 8,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginVertical: 15,
   },
   buttonText: {
-    color: '#FFF',
-    fontSize: 18,
+    color: '#fff',
+    fontSize: 16,
     fontWeight: 'bold',
   },
-  linkButton: {
-    padding: 10,
-  },
-  linkText: {
+  loginLink: {
     color: '#35AAFF',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  errorText: {
-    color: '#FF375B',
     fontSize: 14,
-    marginBottom: 10,
+    marginTop: 10,
+    textAlign: 'center',
   },
 });
 
-export default PersonalRegistration;
-
+export default RegisterTrainerScreen;

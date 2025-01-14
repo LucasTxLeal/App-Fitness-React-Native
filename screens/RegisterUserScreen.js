@@ -12,7 +12,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-const UserRegistration = () => {
+const RegisterUserScreen = () => {
   const navigation = useNavigation();
   const [formData, setFormData] = useState({
     name: '',
@@ -44,8 +44,6 @@ const UserRegistration = () => {
   const handleSubmit = () => {
     if (validateForm()) {
       console.log('Form submitted:', formData);
-      // In a real app, you'd send this data to your backend
-      // For now, we'll just navigate to the Home screen
       navigation.navigate('Home');
     }
   };
@@ -222,5 +220,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default UserRegistration;
-
+export default RegisterUserScreen;

@@ -4,14 +4,22 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import Icon from 'react-native-vector-icons/Feather';
+import { Feather as Icon } from '@expo/vector-icons';
 
 import LoginScreen from './screens/LoginScreen';
 import RegisterUserScreen from './screens/RegisterUserScreen';
 import RegisterTrainerScreen from './screens/RegisterTrainerScreen';
 import HomeScreen from './screens/HomeScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import ExerciseScreen from './screens/ExerciseScreen';
+import ExerciseDetailScreen from './screens/ExerciseDetailScreen';
+import ChatScreen from './screens/ChatScreen';
 import CustomDrawerContent from './components/CustomDrawerContent';
+import FoodTrackerScreen from './screens/FoodTrackerScreen';
+import FoodSearchScreen from './screens/FoodSearchScreen';
+import TrainingScreen from './screens/TrainingScreen';
+import CreateWorkoutPlanScreen from './screens/CreateWorkoutPlanScreen';
+import WorkoutPlanDetailScreen from './screens/WorkoutPlanDetailScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -62,6 +70,46 @@ const MainTabs = () => {
   );
 };
 
+const ExerciseStack = () => {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="ExerciseList" component={ExerciseScreen} />
+      <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
+    </Stack.Navigator>
+  );
+};
+
+const FoodStack = () => {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="FoodTracker" component={FoodTrackerScreen} />
+      <Stack.Screen name="FoodSearch" component={FoodSearchScreen} />
+    </Stack.Navigator>
+  );
+};
+
+const TrainingStack = () => {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="TrainingMain" component={TrainingScreen} />
+      <Stack.Screen name="CreateWorkoutPlan" component={CreateWorkoutPlanScreen} />
+      <Stack.Screen name="WorkoutPlanDetail" component={WorkoutPlanDetailScreen} />
+    </Stack.Navigator>
+  );
+};
+
 const MainDrawer = () => {
   return (
     <Drawer.Navigator
@@ -92,7 +140,46 @@ const MainDrawer = () => {
           ),
         }}
       />
-      {/* Add more drawer screens here */}
+      <Drawer.Screen
+        name="Exercicios"
+        component={ExerciseStack}
+        options={{
+          title: 'Exercícios',
+          drawerIcon: ({ color, size }) => (
+            <Icon name="activity" color={color} size={size} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="Chat"
+        component={ChatScreen}
+        options={{
+          title: 'Chat com Personal',
+          drawerIcon: ({ color, size }) => (
+            <Icon name="message-circle" color={color} size={size} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="FoodTracker"
+        component={FoodStack}
+        options={{
+          title: 'Food Tracker',
+          drawerIcon: ({ color, size }) => (
+            <Icon name="clipboard" color={color} size={size} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="Training"
+        component={TrainingStack}
+        options={{
+          title: 'Training Plan',
+          drawerIcon: ({ color, size }) => (
+            <Icon name="calendar" color={color} size={size} />
+          ),
+        }}
+      />
     </Drawer.Navigator>
   );
 };
@@ -109,7 +196,7 @@ const App = () => {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="RegisterUser" component={RegisterUserScreen} />
         <Stack.Screen name="RegisterTrainer" component={RegisterTrainerScreen} />
-        <Stack.Screen name="MainDrawer" component={MainDrawer} />
+        <Stack.Screen name="Main" component={MainDrawer} />
       </Stack.Navigator>
     </NavigationContainer>
   );
