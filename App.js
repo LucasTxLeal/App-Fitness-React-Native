@@ -5,6 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { Feather as Icon } from '@expo/vector-icons';
+import { View, TouchableOpacity, Text, Platform, StatusBar } from 'react-native';
 
 import LoginScreen from './screens/LoginScreen';
 import RegisterUserScreen from './screens/RegisterUserScreen';
@@ -81,14 +82,55 @@ const MainTabs = () => {
 };
 
 const ExerciseStack = () => {
+  const styles = {
+    header: {
+      backgroundColor: '#191919',
+      paddingHorizontal: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 10 : 20,
+      height: Platform.OS === 'android' ? StatusBar.currentHeight + 56 : 64,
+    },
+    headerTitle: {
+      color: '#fff',
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginLeft: 16,
+    },
+  };
   return (
     <Stack.Navigator
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        header: ({ navigation, route, options }) => {
+          const isDetail = route.name === 'ExerciseDetail';
+          return (
+            <View style={[styles.header, { paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }]}>
+              <TouchableOpacity 
+                onPress={() => isDetail ? navigation.goBack() : navigation.openDrawer()}
+              >
+                <Icon 
+                  name={isDetail ? "arrow-left" : "menu"} 
+                  size={24} 
+                  color="#fff" 
+                />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>
+                {isDetail ? route.params?.exercise?.name : "Exercícios"}
+              </Text>
+            </View>
+          );
+        }
       }}
     >
       <Stack.Screen name="ExerciseList" component={ExerciseScreen} />
-      <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
+      <Stack.Screen 
+        name="ExerciseDetail" 
+        component={ExerciseDetailScreen}
+        options={{
+          headerShown: true,
+        }}
+      />
     </Stack.Navigator>
   );
 };
@@ -135,6 +177,7 @@ const MainDrawer = () => {
         drawerStyle: {
           backgroundColor: '#fff',
           width: 240,
+          paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
         },
         drawerActiveTintColor: '#35AAFF',
         drawerInactiveTintColor: '#333',
@@ -155,6 +198,7 @@ const MainDrawer = () => {
         component={ExerciseStack}
         options={{
           title: 'Exercícios',
+          headerShown: false,
           drawerIcon: ({ color, size }) => (
             <Icon name="activity" color={color} size={size} />
           ),

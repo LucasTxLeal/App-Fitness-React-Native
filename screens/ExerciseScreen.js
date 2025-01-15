@@ -1,65 +1,144 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  ScrollView,
+  TextInput,
+  Platform,
+  StatusBar,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather as Icon } from '@expo/vector-icons';
 
-const exercises = [
-  { 
-    id: '1', 
-    name: 'Push-ups', 
-    description: 'A classic upper body exercise that targets your chest, shoulders, and triceps.',
-    image: 'https://example.com/pushups.jpg',
-    difficulty: 'Intermediate',
-    equipment: 'None',
-    muscles: ['Chest', 'Shoulders', 'Triceps']
-  },
-  { 
-    id: '2', 
-    name: 'Squats', 
-    description: 'A fundamental lower body exercise that works your quads, hamstrings, and glutes.',
-    image: 'https://example.com/squats.jpg',
-    difficulty: 'Beginner',
-    equipment: 'None',
-    muscles: ['Quadriceps', 'Hamstrings', 'Glutes']
-  },
-  { 
-    id: '3', 
-    name: 'Plank', 
-    description: 'An isometric core exercise that improves your stability and posture.',
-    image: 'https://example.com/plank.jpg',
-    difficulty: 'Beginner',
-    equipment: 'None',
-    muscles: ['Core', 'Shoulders', 'Back']
-  },
+const categories = [
+  { id: 'biceps', name: 'Bíceps' },
+  { id: 'costas', name: 'Costas' },
+  { id: 'cardio', name: 'Cardio' },
+  { id: 'peito', name: 'Peito' },
+  { id: 'pernas', name: 'Pernas' },
+  { id: 'ombros', name: 'Ombros' },
+  { id: 'triceps', name: 'Tríceps' },
+  { id: 'abdomen', name: 'Abdômen' },
 ];
 
+const exercises = {
+  biceps: [
+    {
+      id: '1',
+      name: 'Rosca Direta (Halter)',
+      description: 'Execute o movimento controlado, mantendo os cotovelos fixos ao lado do corpo.',
+      muscles: ['Bíceps Braquial', 'Braquial'],
+      equipment: 'Halteres',
+      difficulty: 'Iniciante',
+    },
+    {
+      id: '2',
+      name: 'Rosca Martelo',
+      description: 'Realize o exercício com pegada neutra, simulando um movimento de martelo.',
+      muscles: ['Bíceps Braquial', 'Braquiorradial'],
+      equipment: 'Halteres',
+      difficulty: 'Iniciante',
+    },
+    {
+      id: '3',
+      name: 'Remada Curvada',
+      description: 'Mantenha as costas retas e puxe os pesos em direção ao abdômen.',
+      muscles: ['Bíceps', 'Costas'],
+      equipment: 'Barra ou Halteres',
+      difficulty: 'Intermediário',
+    },
+  ],
+  costas: [
+    { id: 'c1', name: 'Puxada na Barra Fixa', description: 'Exercício para as costas usando o peso corporal.', muscles: ['Latíssimo do Dorso', 'Bíceps'], equipment: 'Barra Fixa', difficulty: 'Intermediário' },
+    { id: 'c2', name: 'Remada Curvada', description: 'Exercício composto para as costas usando barra ou halteres.', muscles: ['Latíssimo do Dorso', 'Trapézio', 'Romboides'], equipment: 'Barra ou Halteres', difficulty: 'Intermediário' },
+    { id: 'c3', name: 'Puxada na Máquina', description: 'Exercício para as costas usando máquina de puxada.', muscles: ['Latíssimo do Dorso', 'Bíceps'], equipment: 'Máquina de Puxada', difficulty: 'Iniciante' },
+  ],
+};
+
 const ExerciseScreen = ({ navigation }) => {
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Exercises</Text>
-      </View>
+  const [selectedCategory, setSelectedCategory] = useState('biceps');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredExercises =
+    exercises[selectedCategory]?.filter((exercise) =>
+      exercise.name.toLowerCase().includes(searchQuery.toLowerCase())
+    ) || [];
+
+  const renderExerciseList = () => {
+    if (filteredExercises.length === 0) {
+      return (
+        <View style={styles.noExercisesContainer}>
+          <Text style={styles.noExercisesText}>No exercises found for this category.</Text>
+        </View>
+      );
+    }
+
+    return (
       <FlatList
-        data={exercises}
+        data={filteredExercises}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.exerciseItem}
             onPress={() => navigation.navigate('ExerciseDetail', { exercise: item })}
           >
-            <Image source={{ uri: item.image }} style={styles.exerciseImage} />
-            <View style={styles.exerciseInfo}>
+            <View style={styles.exerciseContent}>
               <Text style={styles.exerciseName}>{item.name}</Text>
-              <Text style={styles.exerciseDifficulty}>{item.difficulty}</Text>
-              <Text style={styles.exerciseMuscles}>{item.muscles.join(', ')}</Text>
+              <Text style={styles.exerciseDescription}>{item.description.slice(0, 60)}...</Text>
             </View>
-            <Icon name="chevron-right" size={24} color="#35AAFF" />
+            <Icon name="chevron-right" size={20} color="#35AAFF" />
           </TouchableOpacity>
         )}
+        contentContainerStyle={styles.exerciseList}
       />
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.searchContainer}>
+        <Icon name="search" size={20} color="#666" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Pesquisar exercício..."
+          placeholderTextColor="#aaa"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      <View style={styles.categoriesContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesScrollView}
+        >
+          {categories.map((category) => (
+            <TouchableOpacity
+              key={category.id}
+              style={[
+                styles.categoryButton,
+                selectedCategory === category.id && styles.selectedCategory,
+              ]}
+              onPress={() => setSelectedCategory(category.id)}
+            >
+              <Text
+                style={[
+                  styles.categoryText,
+                  selectedCategory === category.id && styles.selectedCategoryText,
+                ]}
+              >
+                {category.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {renderExerciseList()}
     </SafeAreaView>
   );
 };
@@ -69,34 +148,60 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#191919',
   },
-  header: {
+  searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    backgroundColor: '#333',
+    margin: 16,
+    padding: 12,
+    borderRadius: 8,
   },
-  headerTitle: {
+  searchInput: {
+    flex: 1,
     color: '#fff',
-    fontSize: 18,
+    marginLeft: 8,
+    fontSize: 16,
+  },
+  categoriesContainer: {
+    backgroundColor: '#222',
+    paddingVertical: 12,
+  },
+  categoriesScrollView: {
+    paddingHorizontal: 16,
+  },
+  categoryButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#333',
+    marginRight: 8,
+  },
+  selectedCategory: {
+    backgroundColor: '#35AAFF',
+  },
+  categoryText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  selectedCategoryText: {
     fontWeight: 'bold',
-    marginLeft: 16,
+  },
+  exerciseList: {
+    paddingVertical: 16,
   },
   exerciseItem: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#333',
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 12,
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
-  exerciseImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 16,
-  },
-  exerciseInfo: {
+  exerciseContent: {
     flex: 1,
+    marginRight: 16,
   },
   exerciseName: {
     color: '#fff',
@@ -104,14 +209,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 4,
   },
-  exerciseDifficulty: {
-    color: '#35AAFF',
+  exerciseDescription: {
+    color: '#aaa',
     fontSize: 14,
-    marginBottom: 2,
   },
-  exerciseMuscles: {
-    color: '#999',
-    fontSize: 12,
+  noExercisesContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  noExercisesText: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
 

@@ -5,25 +5,27 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather as Icon } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect } from '@react-navigation/native';
+import { mockApi } from '../services/mockApi';
 
 const MEAL_TYPES = {
-  BREAKFAST: 'breakfast',
-  LUNCH: 'lunch',
-  DINNER: 'dinner',
-  SNACKS: 'snacks',
+  BREAKFAST: 'Café da Manhã',
+  LUNCH: 'Almoço',
+  DINNER: 'Jantar',
+  SNACKS: 'Lanches',
 };
-
-// This will simulate our "database" for now
-let foodEntries = {};
 
 const FoodTrackerScreen = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [meals, setMeals] = useState({});
+  const [selectedFood, setSelectedFood] = useState(null);
+  const [showFoodDetail, setShowFoodDetail] = useState(false);
   const [dailyStats, setDailyStats] = useState({
     totalCalories: 0,
     remainingCalories: 2500,
@@ -34,73 +36,208 @@ const FoodTrackerScreen = ({ navigation }) => {
     },
   });
 
-  const loadDailyEntries = useCallback(() => {
+  const loadMeals = useCallback(async () => {
     const dateKey = selectedDate.toISOString().split('T')[0];
-    const entries = foodEntries[dateKey] || [];
-    
-    const totals = entries.reduce(
-      (acc, entry) => ({
-        calories: acc.calories + entry.calories,
-        protein: acc.protein + entry.protein,
-        carbs: acc.carbs + entry.carbs,
-        fat: acc.fat + entry.fat,
-      }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 }
-    );
+    const entries = await mockApi.getFoodEntries(dateKey);
+    setMeals(entries);
+
+    // Calculate daily totals
+    let totalCal = 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFat = 0;
+
+    Object.values(entries).forEach(mealFoods => {
+      mealFoods.forEach(food => {
+        totalCal += food.calories;
+        totalProtein += food.protein;
+        totalCarbs += food.carbs;
+        totalFat += food.fat;
+      });
+    });
 
     setDailyStats({
-      totalCalories: totals.calories,
-      remainingCalories: 2500 - totals.calories,
+      totalCalories: totalCal,
+      remainingCalories: 2500 - totalCal,
       macros: {
-        protein: totals.protein,
-        carbs: totals.carbs,
-        fat: totals.fat,
+        protein: totalProtein,
+        carbs: totalCarbs,
+        fat: totalFat,
       },
     });
   }, [selectedDate]);
 
-  useFocusEffect(loadDailyEntries);
+  useFocusEffect(
+    useCallback(() => {
+      async function loadMealData() {
+        const dateKey = selectedDate.toISOString().split('T')[0];
+        const entries = await mockApi.getFoodEntries(dateKey);
+        setMeals(entries);
+
+        // Calculate daily totals
+        let totalCal = 0;
+        let totalProtein = 0;
+        let totalCarbs = 0;
+        let totalFat = 0;
+
+        Object.values(entries).forEach(mealFoods => {
+          mealFoods.forEach(food => {
+            totalCal += food.calories;
+            totalProtein += food.protein;
+            totalCarbs += food.carbs;
+            totalFat += food.fat;
+          });
+        });
+
+        setDailyStats({
+          totalCalories: totalCal,
+          remainingCalories: 2500 - totalCal,
+          macros: {
+            protein: totalProtein,
+            carbs: totalCarbs,
+            fat: totalFat,
+          },
+        });
+      }
+
+      loadMealData();
+    }, [selectedDate])
+  );
 
   const handleAddFood = (mealType) => {
     navigation.navigate('FoodSearch', {
       mealType,
       date: selectedDate.toISOString().split('T')[0],
-      onAddFood: (food) => {
-        const dateKey = selectedDate.toISOString().split('T')[0];
-        if (!foodEntries[dateKey]) {
-          foodEntries[dateKey] = [];
-        }
-        foodEntries[dateKey].push({ ...food, mealType });
-        loadDailyEntries();
-      },
     });
   };
 
-  const renderMealSection = (title, mealType, iconName) => (
-    <TouchableOpacity
-      style={styles.mealSection}
-      onPress={() => handleAddFood(mealType)}
-    >
-      <View style={styles.mealHeader}>
-        <Icon name={iconName} size={24} color="#35AAFF" />
-        <Text style={styles.mealTitle}>{title}</Text>
-      </View>
-      <Icon name="plus" size={24} color="#35AAFF" />
-    </TouchableOpacity>
-  );
+  const handleRemoveFood = async (mealType, index) => {
+    await mockApi.removeFoodEntry(
+      selectedDate.toISOString().split('T')[0],
+      mealType,
+      index
+    );
+    loadMeals();
+    setShowFoodDetail(false);
+  };
 
   const onDateChange = (event, selectedDate) => {
-    const currentDate = selectedDate || new Date();
     setShowDatePicker(false);
-    setSelectedDate(currentDate);
+    if (selectedDate) {
+      setSelectedDate(selectedDate);
+    }
   };
+
+  const FoodDetailModal = () => (
+    <Modal
+      visible={showFoodDetail}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowFoodDetail(false)}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{selectedFood?.name}</Text>
+            <TouchableOpacity onPress={() => setShowFoodDetail(false)}>
+              <Icon name="x" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.nutritionGrid}>
+            <View style={styles.nutritionItem}>
+              <Text style={styles.nutritionLabel}>Calories</Text>
+              <Text style={styles.nutritionValue}>{selectedFood?.calories}</Text>
+            </View>
+            <View style={styles.nutritionItem}>
+              <Text style={styles.nutritionLabel}>Protein</Text>
+              <Text style={styles.nutritionValue}>{selectedFood?.protein}g</Text>
+            </View>
+            <View style={styles.nutritionItem}>
+              <Text style={styles.nutritionLabel}>Carbs</Text>
+              <Text style={styles.nutritionValue}>{selectedFood?.carbs}g</Text>
+            </View>
+            <View style={styles.nutritionItem}>
+              <Text style={styles.nutritionLabel}>Fat</Text>
+              <Text style={styles.nutritionValue}>{selectedFood?.fat}g</Text>
+            </View>
+          </View>
+
+          <View style={styles.infoSection}>
+            <Text style={styles.infoTitle}>Amount</Text>
+            <Text style={styles.infoText}>{selectedFood?.quantity}g</Text>
+          </View>
+
+          <View style={styles.infoSection}>
+            <Text style={styles.infoTitle}>Benefits</Text>
+            <Text style={styles.infoText}>{selectedFood?.benefits}</Text>
+          </View>
+
+          <View style={styles.infoSection}>
+            <Text style={styles.infoTitle}>Diet Information</Text>
+            <Text style={styles.infoText}>{selectedFood?.dietInfo}</Text>
+          </View>
+
+          <TouchableOpacity 
+            style={styles.removeButton} 
+            onPress={() => handleRemoveFood(selectedFood.mealType, selectedFood.index)}
+          >
+            <Text style={styles.removeButtonText}>Remove Food</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderMealSection = (title, mealType) => (
+    <View style={styles.mealSection}>
+      <View style={styles.mealHeader}>
+        <View style={styles.mealTitleContainer}>
+          <Icon 
+            name={
+              mealType === MEAL_TYPES.BREAKFAST ? 'sun' :
+              mealType === MEAL_TYPES.LUNCH ? 'coffee' :
+              mealType === MEAL_TYPES.DINNER ? 'moon' : 'package'
+            } 
+            size={24} 
+            color="#35AAFF" 
+          />
+          <Text style={styles.mealTitle}>{title}</Text>
+        </View>
+        <TouchableOpacity onPress={() => handleAddFood(mealType)}>
+          <Icon name="plus" size={24} color="#35AAFF" />
+        </TouchableOpacity>
+      </View>
+
+      {meals[mealType]?.map((food, index) => (
+        <TouchableOpacity
+          key={index}
+          style={styles.foodItem}
+          onPress={() => {
+            setSelectedFood({ ...food, mealType, index });
+            setShowFoodDetail(true);
+          }}
+        >
+          <View>
+            <Text style={styles.foodName}>{food.name}</Text>
+            <Text style={styles.foodQuantity}>{food.quantity}g</Text>
+          </View>
+          <Text style={styles.foodCalories}>{food.calories} cal</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowDatePicker(true)}>
+      <TouchableOpacity 
+        style={styles.datePickerButton} 
+        onPress={() => setShowDatePicker(true)}
+      >
         <Text style={styles.dateText}>{selectedDate.toDateString()}</Text>
         <Icon name="calendar" size={24} color="#35AAFF" />
       </TouchableOpacity>
+
       {showDatePicker && (
         <DateTimePicker
           value={selectedDate}
@@ -143,11 +280,13 @@ const FoodTrackerScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {renderMealSection('Breakfast', MEAL_TYPES.BREAKFAST, 'sun')}
-        {renderMealSection('Lunch', MEAL_TYPES.LUNCH, 'coffee')}
-        {renderMealSection('Dinner', MEAL_TYPES.DINNER, 'moon')}
-        {renderMealSection('Snacks', MEAL_TYPES.SNACKS, 'package')}
+        {renderMealSection(MEAL_TYPES.BREAKFAST, MEAL_TYPES.BREAKFAST)}
+        {renderMealSection(MEAL_TYPES.LUNCH, MEAL_TYPES.LUNCH)}
+        {renderMealSection(MEAL_TYPES.DINNER, MEAL_TYPES.DINNER)}
+        {renderMealSection(MEAL_TYPES.SNACKS, MEAL_TYPES.SNACKS)}
       </ScrollView>
+
+      {selectedFood && <FoodDetailModal />}
     </SafeAreaView>
   );
 };
@@ -216,11 +355,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+  },
+  mealHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 12,
   },
-  mealHeader: {
+  mealTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -229,6 +371,95 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 12,
+  },
+  foodItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#262626',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  foodName: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  foodQuantity: {
+    color: '#35AAFF',
+    fontSize: 14,
+    marginTop: 4,
+  },
+  foodCalories: {
+    color: '#999',
+    fontSize: 14,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#191919',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  nutritionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 20,
+  },
+  nutritionItem: {
+    width: '50%',
+    padding: 10,
+  },
+  nutritionLabel: {
+    color: '#666',
+    fontSize: 14,
+  },
+  nutritionValue: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  infoSection: {
+    marginBottom: 20,
+  },
+  infoTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  infoText: {
+    color: '#999',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  removeButton: {
+    backgroundColor: '#FF375B',
+    borderRadius: 8,
+    padding: 15,
+    alignItems: 'center',
+  },
+  removeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

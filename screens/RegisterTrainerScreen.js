@@ -1,131 +1,259 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Platform,
+  Alert,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Feather as Icon } from '@expo/vector-icons';
 
 const RegisterTrainerScreen = ({ navigation }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [specialty, setSpecialty] = useState('');
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    specialty: '',
+    weight: '',
+    height: '',
+    birthDate: new Date(),
+    certificates: '',
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const handleInputChange = (name, value) => {
+    setFormData(prevState => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      handleInputChange('birthDate', selectedDate);
+    }
+  };
+
+  const handleCertificatesChange = (text) => {
+    handleInputChange('certificates', text);
+  };
 
   const handleRegister = () => {
-    if (!name || !email || !password || !confirmPassword || !specialty) {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Erro', 'As senhas não coincidem.');
-      return;
-    }
-
-    // Aqui você pode adicionar a lógica de registro, como enviar dados para uma API.
-    Alert.alert('Sucesso', 'Cadastro realizado com sucesso!');
-    navigation.navigate('Login'); // Redireciona para a tela de login após o registro.
+    // Implement registration logic here
+    console.log('Register trainer:', formData);
+    // After successful registration, navigate to the main screen
+    navigation.navigate('Main');
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Registrar Treinador</Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.title}>Register as Trainer</Text>
+        
+        <View style={styles.inputContainer}>
+          <Icon name="user" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Full Name"
+            placeholderTextColor="#666"
+            value={formData.name}
+            onChangeText={(text) => handleInputChange('name', text)}
+          />
+        </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Nome Completo"
-        placeholderTextColor="#666"
-        value={name}
-        onChangeText={setName}
-      />
+        <View style={styles.inputContainer}>
+          <Icon name="mail" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#666"
+            keyboardType="email-address"
+            value={formData.email}
+            onChangeText={(text) => handleInputChange('email', text)}
+          />
+        </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#666"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-      />
+        <View style={styles.inputContainer}>
+          <Icon name="lock" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#666"
+            secureTextEntry
+            value={formData.password}
+            onChangeText={(text) => handleInputChange('password', text)}
+          />
+        </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        placeholderTextColor="#666"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+        <View style={styles.inputContainer}>
+          <Icon name="lock" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm Password"
+            placeholderTextColor="#666"
+            secureTextEntry
+            value={formData.confirmPassword}
+            onChangeText={(text) => handleInputChange('confirmPassword', text)}
+          />
+        </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Confirmar Senha"
-        placeholderTextColor="#666"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry
-      />
+        <View style={styles.inputContainer}>
+          <Icon name="award" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Specialization"
+            placeholderTextColor="#666"
+            value={formData.specialty}
+            onChangeText={(text) => handleInputChange('specialty', text)}
+          />
+        </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Especialidade (ex: Musculação, Yoga)"
-        placeholderTextColor="#666"
-        value={specialty}
-        onChangeText={setSpecialty}
-      />
+        <View style={styles.inputContainer}>
+          <Icon name="tag" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Weight (kg)"
+            placeholderTextColor="#666"
+            keyboardType="numeric"
+            value={formData.weight}
+            onChangeText={(text) => handleInputChange('weight', text)}
+          />
+        </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleRegister}>
-        <Text style={styles.buttonText}>Registrar</Text>
-      </TouchableOpacity>
+        <View style={styles.inputContainer}>
+          <Icon name="arrow-up" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Height (cm)"
+            placeholderTextColor="#666"
+            keyboardType="numeric"
+            value={formData.height}
+            onChangeText={(text) => handleInputChange('height', text)}
+          />
+        </View>
 
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.loginLink}>Já tem uma conta? Faça login</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity
+          style={styles.datePickerButton}
+          onPress={() => setShowDatePicker(true)}
+        >
+          <Icon name="calendar" size={20} color="#666" style={styles.inputIcon} />
+          <Text style={styles.datePickerButtonText}>
+            {formData.birthDate.toDateString()}
+          </Text>
+        </TouchableOpacity>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={formData.birthDate}
+            mode="date"
+            display="default"
+            onChange={handleDateChange}
+          />
+        )}
+
+        <View style={styles.inputContainer}>
+          <Icon name="award" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Certificates (comma-separated)"
+            placeholderTextColor="#666"
+            value={formData.certificates}
+            onChangeText={handleCertificatesChange}
+            multiline
+          />
+        </View>
+
+        <TouchableOpacity style={styles.button} onPress={handleRegister}>
+          <Text style={styles.buttonText}>Register as Trainer</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.loginLink}
+          onPress={() => navigation.navigate('Login')}
+        >
+          <Text style={styles.loginLinkText}>
+            Already have an account? Login
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    flex: 1,
     backgroundColor: '#191919',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: 20,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 20,
+    textAlign: 'center',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#333',
+    borderRadius: 8,
+    marginBottom: 16,
+    paddingHorizontal: 14,
+  },
+  inputIcon: {
+    marginRight: 10,
   },
   input: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#2c2c2c',
+    flex: 1,
+    color: '#fff',
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#333',
     borderRadius: 8,
-    paddingHorizontal: 15,
-    marginBottom: 15,
+    marginBottom: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  datePickerButtonText: {
     color: '#fff',
     fontSize: 16,
   },
   button: {
-    width: '100%',
-    height: 50,
     backgroundColor: '#35AAFF',
     borderRadius: 8,
-    justifyContent: 'center',
+    paddingVertical: 14,
     alignItems: 'center',
-    marginVertical: 15,
+    marginTop: 20,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   loginLink: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  loginLinkText: {
     color: '#35AAFF',
-    fontSize: 14,
-    marginTop: 10,
-    textAlign: 'center',
+    fontSize: 16,
   },
 });
 
 export default RegisterTrainerScreen;
+
