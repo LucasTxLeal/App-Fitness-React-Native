@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const FOOD_ENTRIES_KEY = 'food_entries';
 const FOOD_DATABASE_KEY = 'food_database';
+const CALORIE_GOAL_KEY = 'calorie_goal';
 
 // Initialize mock food database
 const initializeFoodDatabase = async () => {
@@ -138,6 +139,26 @@ export const mockApi = {
       console.log('All data cleared');
     } catch (error) {
       console.error('Error clearing data:', error);
+    }
+  },
+
+  getCalorieGoal: async () => {
+    try {
+      const calorieGoal = await AsyncStorage.getItem(CALORIE_GOAL_KEY);
+      return calorieGoal ? parseInt(calorieGoal) : 2500; // Default to 2500 if not set
+    } catch (error) {
+      console.error('Error getting calorie goal:', error);
+      return 2500; // Default value
+    }
+  },
+
+  setCalorieGoal: async (goal) => {
+    try {
+      await AsyncStorage.setItem(CALORIE_GOAL_KEY, goal.toString());
+      return true;
+    } catch (error) {
+      console.error('Error setting calorie goal:', error);
+      return false;
     }
   },
 };

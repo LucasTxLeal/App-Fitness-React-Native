@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather as Icon } from '@expo/vector-icons';
@@ -26,6 +27,9 @@ const FoodTrackerScreen = ({ navigation }) => {
   const [meals, setMeals] = useState({});
   const [selectedFood, setSelectedFood] = useState(null);
   const [showFoodDetail, setShowFoodDetail] = useState(false);
+  const [showCalorieGoalModal, setShowCalorieGoalModal] = useState(false);
+  const [calorieGoal, setCalorieGoal] = useState(2500);
+  const [tempCalorieGoal, setTempCalorieGoal] = useState('2500');
   const [dailyStats, setDailyStats] = useState({
     totalCalories: 0,
     remainingCalories: 2500,
@@ -40,6 +44,9 @@ const FoodTrackerScreen = ({ navigation }) => {
     const dateKey = selectedDate.toISOString().split('T')[0];
     const entries = await mockApi.getFoodEntries(dateKey);
     setMeals(entries);
+
+    const goal = await mockApi.getCalorieGoal();
+    setCalorieGoal(goal);
 
     // Calculate daily totals
     let totalCal = 0;
@@ -58,7 +65,7 @@ const FoodTrackerScreen = ({ navigation }) => {
 
     setDailyStats({
       totalCalories: totalCal,
-      remainingCalories: 2500 - totalCal,
+      remainingCalories: goal - totalCal,
       macros: {
         protein: totalProtein,
         carbs: totalCarbs,
@@ -69,39 +76,8 @@ const FoodTrackerScreen = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      async function loadMealData() {
-        const dateKey = selectedDate.toISOString().split('T')[0];
-        const entries = await mockApi.getFoodEntries(dateKey);
-        setMeals(entries);
-
-        // Calculate daily totals
-        let totalCal = 0;
-        let totalProtein = 0;
-        let totalCarbs = 0;
-        let totalFat = 0;
-
-        Object.values(entries).forEach(mealFoods => {
-          mealFoods.forEach(food => {
-            totalCal += food.calories;
-            totalProtein += food.protein;
-            totalCarbs += food.carbs;
-            totalFat += food.fat;
-          });
-        });
-
-        setDailyStats({
-          totalCalories: totalCal,
-          remainingCalories: 2500 - totalCal,
-          macros: {
-            protein: totalProtein,
-            carbs: totalCarbs,
-            fat: totalFat,
-          },
-        });
-      }
-
-      loadMealData();
-    }, [selectedDate])
+      loadMeals();
+    }, [loadMeals])
   );
 
   const handleAddFood = (mealType) => {
@@ -126,6 +102,18 @@ const FoodTrackerScreen = ({ navigation }) => {
     if (selectedDate) {
       setSelectedDate(selectedDate);
     }
+  };
+
+  const handleSaveCalorieGoal = async () => {
+    const newGoal = parseInt(tempCalorieGoal);
+    if (isNaN(newGoal) || newGoal <= 0) {
+      alert('Please enter a valid calorie goal');
+      return;
+    }
+    await mockApi.setCalorieGoal(newGoal);
+    setCalorieGoal(newGoal);
+    setShowCalorieGoalModal(false);
+    loadMeals(); // Reload to update stats with new goal
   };
 
   const FoodDetailModal = () => (
@@ -183,6 +171,37 @@ const FoodTrackerScreen = ({ navigation }) => {
             onPress={() => handleRemoveFood(selectedFood.mealType, selectedFood.index)}
           >
             <Text style={styles.removeButtonText}>Remove Food</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const CalorieGoalModal = () => (
+    <Modal
+      visible={showCalorieGoalModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowCalorieGoalModal(false)}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Edit Calorie Goal</Text>
+            <TouchableOpacity onPress={() => setShowCalorieGoalModal(false)}>
+              <Icon name="x" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            style={styles.calorieGoalInput}
+            value={tempCalorieGoal}
+            onChangeText={setTempCalorieGoal}
+            keyboardType="numeric"
+            placeholder="Enter calorie goal"
+            placeholderTextColor="#666"
+          />
+          <TouchableOpacity style={styles.saveButton} onPress={handleSaveCalorieGoal}>
+            <Text style={styles.saveButtonText}>Save</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -251,6 +270,18 @@ const FoodTrackerScreen = ({ navigation }) => {
         <View style={styles.statsCard}>
           <Text style={styles.statsTitle}>Daily Summary</Text>
           <View style={styles.calorieInfo}>
+            <TouchableOpacity 
+              style={styles.calorieGoalButton}
+              onPress={() => {
+                setTempCalorieGoal(calorieGoal.toString());
+                setShowCalorieGoalModal(true);
+              }}
+            >
+              <Text style={styles.calorieText}>
+                Goal: {calorieGoal} cal
+              </Text>
+              <Icon name="edit-2" size={16} color="#35AAFF" />
+            </TouchableOpacity>
             <Text style={styles.calorieText}>
               Remaining: {Math.round(dailyStats.remainingCalories)} cal
             </Text>
@@ -287,6 +318,7 @@ const FoodTrackerScreen = ({ navigation }) => {
       </ScrollView>
 
       {selectedFood && <FoodDetailModal />}
+      <CalorieGoalModal />
     </SafeAreaView>
   );
 };
@@ -325,13 +357,22 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   calorieInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
     marginBottom: 16,
   },
   calorieText: {
     color: '#fff',
     fontSize: 16,
+    marginBottom: 4,
+  },
+  calorieGoalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#444',
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 8,
   },
   macroContainer: {
     flexDirection: 'row',
@@ -457,6 +498,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   removeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  calorieGoalInput: {
+    backgroundColor: '#333',
+    borderRadius: 8,
+    padding: 12,
+    color: '#fff',
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  saveButton: {
+    backgroundColor: '#35AAFF',
+    borderRadius: 8,
+    padding: 15,
+    alignItems: 'center',
+  },
+  saveButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
