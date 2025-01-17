@@ -11,17 +11,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Feather as Icon } from '@expo/vector-icons';
+import { registrarUsuario } from '../services/api';
+import { format } from 'date-fns';
 
 const RegisterUserScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
-    name: '',
+    nome: '',
     email: '',
-    password: '',
-    confirmPassword: '',
-    birthDate: new Date(),
-    weight: '',
-    height: '',
-    goal: '',
+    senha: '',
+    datadenascimento: new Date(),
+    peso: '',
+    altura: '',
+    objetivo: '',
   });
   const [errors, setErrors] = useState({});
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -31,7 +32,6 @@ const RegisterUserScreen = ({ navigation }) => {
       ...prevState,
       [name]: value,
     }));
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prevErrors => ({ ...prevErrors, [name]: null }));
     }
@@ -40,51 +40,73 @@ const RegisterUserScreen = ({ navigation }) => {
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
     if (selectedDate) {
-      handleInputChange('birthDate', selectedDate);
+      handleInputChange('datadenascimento', selectedDate);
     }
+  };
+
+  const handlePesoChange = (text) => {
+    const numericValue = text.replace(/[^0-9]/g, '');
+    handleInputChange('peso', numericValue);
+  };
+
+  const handleAlturaChange = (text) => {
+    const numericValue = text.replace(/[^0-9]/g, '');
+    handleInputChange('altura', numericValue);
   };
 
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.name) newErrors.name = 'Name is required';
-    if (!formData.email) newErrors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid';
-    if (!formData.password) newErrors.password = 'Password is required';
-    else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
-    if (!formData.weight) newErrors.weight = 'Weight is required';
-    if (!formData.height) newErrors.height = 'Height is required';
+    if (!formData.nome) newErrors.nome = 'Nome é obrigatório';
+    if (!formData.email) newErrors.email = 'Email é obrigatório';
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email é inválido';
+    if (!formData.senha) newErrors.senha = 'Senha é obrigatória';
+    else if (formData.senha.length < 6) newErrors.senha = 'A senha deve ter pelo menos 6 caracteres';
+    if (!formData.peso) newErrors.peso = 'Peso é obrigatório';
+    if (!formData.altura) newErrors.altura = 'Altura é obrigatória';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validateForm()) {
-      console.log('Form submitted:', formData);
-      Alert.alert('Success', 'Registration successful!', [
-        { text: 'OK', onPress: () => navigation.navigate('Main') }
-      ]);
+      try {
+        const formattedData = {
+          ...formData,
+          datadenascimento: format(formData.datadenascimento, 'yyyy-MM-dd'),
+          peso: parseFloat(formData.peso),
+          altura: parseFloat(formData.altura)
+        };
+        console.log('Dados formatados para envio:', formattedData);
+        const response = await registrarUsuario(formattedData);
+        console.log('Registro bem-sucedido:', response);
+        Alert.alert('Sucesso', 'Registro realizado com sucesso!', [
+          { text: 'OK', onPress: () => navigation.navigate('Main') }
+        ]);
+      } catch (error) {
+        console.error('Erro no registro:', error);
+        Alert.alert('Erro', error.message || 'Ocorreu um erro durante o registro.');
+      }
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Create Your Account</Text>
+        <Text style={styles.title}>Crie Sua Conta</Text>
 
         <View style={styles.inputContainer}>
           <Icon name="user" size={20} color="#666" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Full Name"
+            placeholder="Nome Completo"
             placeholderTextColor="#666"
-            value={formData.name}
-            onChangeText={(text) => handleInputChange('name', text)}
+            value={formData.nome}
+            onChangeText={(text) => handleInputChange('nome', text)}
           />
         </View>
-        {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+        {errors.nome && <Text style={styles.errorText}>{errors.nome}</Text>}
 
         <View style={styles.inputContainer}>
           <Icon name="mail" size={20} color="#666" style={styles.inputIcon} />
@@ -103,27 +125,15 @@ const RegisterUserScreen = ({ navigation }) => {
           <Icon name="lock" size={20} color="#666" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Password"
+            placeholder="Senha"
             placeholderTextColor="#666"
             secureTextEntry
-            value={formData.password}
-            onChangeText={(text) => handleInputChange('password', text)}
+            value={formData.senha}
+            onChangeText={(text) => handleInputChange('senha', text)}
           />
         </View>
-        {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+        {errors.senha && <Text style={styles.errorText}>{errors.senha}</Text>}
 
-        <View style={styles.inputContainer}>
-          <Icon name="lock" size={20} color="#666" style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm Password"
-            placeholderTextColor="#666"
-            secureTextEntry
-            value={formData.confirmPassword}
-            onChangeText={(text) => handleInputChange('confirmPassword', text)}
-          />
-        </View>
-        {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
 
         <TouchableOpacity
           style={styles.datePickerButton}
@@ -131,13 +141,13 @@ const RegisterUserScreen = ({ navigation }) => {
         >
           <Icon name="calendar" size={20} color="#666" style={styles.inputIcon} />
           <Text style={styles.datePickerButtonText}>
-            {formData.birthDate.toDateString()}
+            {formData.datadenascimento.toDateString()}
           </Text>
         </TouchableOpacity>
 
         {showDatePicker && (
           <DateTimePicker
-            value={formData.birthDate}
+            value={formData.datadenascimento}
             mode="date"
             display="default"
             onChange={handleDateChange}
@@ -148,50 +158,50 @@ const RegisterUserScreen = ({ navigation }) => {
           <Icon name="tag" size={20} color="#666" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Weight (kg)"
+            placeholder="Peso (kg)"
             placeholderTextColor="#666"
             keyboardType="numeric"
-            value={formData.weight}
-            onChangeText={(text) => handleInputChange('weight', text)}
+            value={formData.peso}
+            onChangeText={handlePesoChange}
           />
         </View>
-        {errors.weight && <Text style={styles.errorText}>{errors.weight}</Text>}
+        {errors.peso && <Text style={styles.errorText}>{errors.peso}</Text>}
 
         <View style={styles.inputContainer}>
           <Icon name="arrow-up" size={20} color="#666" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Height (cm)"
+            placeholder="Altura (cm)"
             placeholderTextColor="#666"
             keyboardType="numeric"
-            value={formData.height}
-            onChangeText={(text) => handleInputChange('height', text)}
+            value={formData.altura}
+            onChangeText={handleAlturaChange}
           />
         </View>
-        {errors.height && <Text style={styles.errorText}>{errors.height}</Text>}
+        {errors.altura && <Text style={styles.errorText}>{errors.altura}</Text>}
 
         <View style={styles.inputContainer}>
           <Icon name="target" size={20} color="#666" style={styles.inputIcon} />
           <TextInput
             style={[styles.input, styles.multilineInput]}
-            placeholder="Fitness Goal"
+            placeholder="Objetivo Fitness"
             placeholderTextColor="#666"
             multiline
             numberOfLines={4}
-            value={formData.goal}
-            onChangeText={(text) => handleInputChange('goal', text)}
+            value={formData.objetivo}
+            onChangeText={(text) => handleInputChange('objetivo', text)}
           />
         </View>
 
         <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-          <Text style={styles.buttonText}>Register</Text>
+          <Text style={styles.buttonText}>Registrar</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.linkButton}
           onPress={() => navigation.navigate('RegisterTrainer')}
         >
-          <Text style={styles.linkText}>I'm a Personal Trainer</Text>
+          <Text style={styles.linkText}>Sou um Personal Trainer</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -232,9 +242,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   multilineInput: {
+    height: 100,
     textAlignVertical: 'top',
-    paddingVertical: 12, // Alinhado com as outras entradas
-  },  
+  },
   datePickerButton: {
     flexDirection: 'row',
     alignItems: 'center',

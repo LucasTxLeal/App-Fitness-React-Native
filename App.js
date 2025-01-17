@@ -142,8 +142,8 @@ const FoodStack = () => {
         headerShown: false,
       }}
     >
-      <Stack.Screen name="FoodTracker" component={FoodTrackerScreen} />
-      <Stack.Screen name="FoodSearch" component={FoodSearchScreen} />
+      <Stack.Screen name="FoodTrackerMain" component={FoodTrackerScreen} />
+      <Stack.Screen name="FoodSearchScreen" component={FoodSearchScreen} />
     </Stack.Navigator>
   );
 };
@@ -215,7 +215,7 @@ const MainDrawer = () => {
         }}
       />
       <Drawer.Screen
-        name="FoodTracker"
+        name="FoodTrackerStack"
         component={FoodStack}
         options={{
           title: 'Food Tracker',

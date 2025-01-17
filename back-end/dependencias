@@ -1,0 +1,3 @@
+npm install express pg bcrypt body-parser dotenv cors
+npm install sequelize
+npm install bcrypt jsonwebtoken

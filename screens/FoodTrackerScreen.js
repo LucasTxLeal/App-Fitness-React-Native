@@ -1,78 +1,118 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Modal,
   TextInput,
+  Alert,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather as Icon } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect } from '@react-navigation/native';
-import { mockApi } from '../services/mockApi';
+import { 
+  obterRefeicoesDiarias, 
+  obterResumoDiario, 
+  definirMetaCalorias, 
+  registrarRefeicao,
+  deletarRefeicao,
+  atualizarRefeicao,
+} from '../services/api';
 
 const MEAL_TYPES = {
-  BREAKFAST: 'Café da Manhã',
-  LUNCH: 'Almoço',
-  DINNER: 'Jantar',
-  SNACKS: 'Lanches',
+  BREAKFAST: 1,
+  LUNCH: 2,
+  DINNER: 3,
+  SNACKS: 4,
 };
 
 const FoodTrackerScreen = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [meals, setMeals] = useState({});
-  const [selectedFood, setSelectedFood] = useState(null);
-  const [showFoodDetail, setShowFoodDetail] = useState(false);
-  const [showCalorieGoalModal, setShowCalorieGoalModal] = useState(false);
-  const [calorieGoal, setCalorieGoal] = useState(2500);
-  const [tempCalorieGoal, setTempCalorieGoal] = useState('2500');
   const [dailyStats, setDailyStats] = useState({
     totalCalories: 0,
-    remainingCalories: 2500,
+    remainingCalories: 0,
     macros: {
       protein: 0,
       carbs: 0,
       fat: 0,
     },
   });
+  const [calorieGoal, setCalorieGoal] = useState(2500);
+  const [showCalorieGoalModal, setShowCalorieGoalModal] = useState(false);
+  const [tempCalorieGoal, setTempCalorieGoal] = useState('2500');
+  const [editingFood, setEditingFood] = useState(null);
+  const [editingQuantity, setEditingQuantity] = useState('');
 
   const loadMeals = useCallback(async () => {
-    const dateKey = selectedDate.toISOString().split('T')[0];
-    const entries = await mockApi.getFoodEntries(dateKey);
-    setMeals(entries);
+    try {
+      const dateKey = selectedDate.toISOString().split('T')[0];
+      const mealsResponse = await obterRefeicoesDiarias(dateKey);
+      
+      if (mealsResponse && mealsResponse.refeicoes) {
+        const organizedMeals = {
+          [MEAL_TYPES.BREAKFAST]: [],
+          [MEAL_TYPES.LUNCH]: [],
+          [MEAL_TYPES.DINNER]: [],
+          [MEAL_TYPES.SNACKS]: [],
+        };
+      
+        mealsResponse.refeicoes.forEach(meal => {
+          if (organizedMeals[meal.tipo_id]) {
+            const quantidade = parseFloat(meal.quantidade_gramas);
+            const caloriasPor100g = parseFloat(meal.alimento.calorias);
+            const caloriasTotal = (caloriasPor100g * quantidade) / 100;
 
-    const goal = await mockApi.getCalorieGoal();
-    setCalorieGoal(goal);
+            organizedMeals[meal.tipo_id].push({
+              id: meal.id,
+              nome_alimento: meal.alimento.nome_alimento,
+              quantidade_gramas: parseFloat(meal.quantidade_gramas),
+              calorias: meal.alimento.calorias * (parseFloat(meal.quantidade_gramas) / 100),
+              proteinas: meal.alimento.proteinas * (parseFloat(meal.quantidade_gramas) / 100),
+              carboidratos: meal.alimento.carboidratos * (parseFloat(meal.quantidade_gramas) / 100),
+              gorduras: meal.alimento.gorduras * (parseFloat(meal.quantidade_gramas) / 100),
+            });
+          }
+        });
+      
+        setMeals(organizedMeals);
+      } else {
+        setMeals({});
+      }
 
-    // Calculate daily totals
-    let totalCal = 0;
-    let totalProtein = 0;
-    let totalCarbs = 0;
-    let totalFat = 0;
-
-    Object.values(entries).forEach(mealFoods => {
-      mealFoods.forEach(food => {
-        totalCal += food.calories;
-        totalProtein += food.protein;
-        totalCarbs += food.carbs;
-        totalFat += food.fat;
+      const summaryResponse = await obterResumoDiario(dateKey);
+    
+      if (summaryResponse && summaryResponse.resumo) {
+        setDailyStats({
+          totalCalories: parseFloat(summaryResponse.resumo.calorias) || 0,
+          remainingCalories: calorieGoal - (parseFloat(summaryResponse.resumo.calorias) || 0),
+          macros: {
+            protein: parseFloat(summaryResponse.resumo.proteinas) || 0,
+            carbs: parseFloat(summaryResponse.resumo.carboidratos) || 0,
+            fat: parseFloat(summaryResponse.resumo.gorduras) || 0,
+          },
+        });
+      } else {
+        setDailyStats({
+          totalCalories: 0,
+          remainingCalories: calorieGoal,
+          macros: { protein: 0, carbs: 0, fat: 0 },
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      setMeals({});
+      setDailyStats({
+        totalCalories: 0,
+        remainingCalories: calorieGoal,
+        macros: { protein: 0, carbs: 0, fat: 0 },
       });
-    });
-
-    setDailyStats({
-      totalCalories: totalCal,
-      remainingCalories: goal - totalCal,
-      macros: {
-        protein: totalProtein,
-        carbs: totalCarbs,
-        fat: totalFat,
-      },
-    });
-  }, [selectedDate]);
+    }
+  }, [selectedDate, calorieGoal]);
 
   useFocusEffect(
     useCallback(() => {
@@ -81,20 +121,47 @@ const FoodTrackerScreen = ({ navigation }) => {
   );
 
   const handleAddFood = (mealType) => {
-    navigation.navigate('FoodSearch', {
+    navigation.navigate('FoodSearchScreen', {
       mealType,
       date: selectedDate.toISOString().split('T')[0],
     });
   };
 
-  const handleRemoveFood = async (mealType, index) => {
-    await mockApi.removeFoodEntry(
-      selectedDate.toISOString().split('T')[0],
-      mealType,
-      index
-    );
-    loadMeals();
-    setShowFoodDetail(false);
+  const handleEditFood = (food) => {
+    setEditingFood(food);
+    setEditingQuantity(food.quantidade_gramas.toString());
+  };
+
+  const handleUpdateFood = async () => {
+    if (!editingFood) return;
+
+    const newQuantity = parseFloat(editingQuantity);
+    if (isNaN(newQuantity) || newQuantity <= 0) {
+      Alert.alert('Erro', 'Por favor, insira uma quantidade válida.');
+      return;
+    }
+
+    try {
+      await atualizarRefeicao(editingFood.id, {
+        quantidade_gramas: newQuantity,
+      });
+      setEditingFood(null);
+      loadMeals();
+    } catch (error) {
+      console.error('Erro ao atualizar alimento:', error);
+      Alert.alert('Erro', 'Não foi possível atualizar o alimento. Por favor, tente novamente.');
+    }
+  };
+
+  const handleRemoveFood = async (mealId) => {
+    try {
+      await deletarRefeicao(mealId);
+      setEditingFood(null);
+      loadMeals();
+    } catch (error) {
+      console.error('Erro ao remover alimento:', error);
+      Alert.alert('Erro', 'Não foi possível remover o alimento. Por favor, tente novamente.');
+    }
   };
 
   const onDateChange = (event, selectedDate) => {
@@ -107,145 +174,64 @@ const FoodTrackerScreen = ({ navigation }) => {
   const handleSaveCalorieGoal = async () => {
     const newGoal = parseInt(tempCalorieGoal);
     if (isNaN(newGoal) || newGoal <= 0) {
-      alert('Please enter a valid calorie goal');
+      Alert.alert('Erro', 'Por favor, insira uma meta de calorias válida.');
       return;
     }
-    await mockApi.setCalorieGoal(newGoal);
-    setCalorieGoal(newGoal);
-    setShowCalorieGoalModal(false);
-    loadMeals(); // Reload to update stats with new goal
+    try {
+      await definirMetaCalorias({
+        meta_calorias: newGoal,
+        data_registro: selectedDate.toISOString().split('T')[0],
+      });
+      setCalorieGoal(newGoal);
+      setShowCalorieGoalModal(false);
+      loadMeals();
+    } catch (error) {
+      console.error('Erro ao atualizar meta de calorias:', error);
+      Alert.alert('Erro', 'Não foi possível atualizar a meta de calorias.');
+    }
   };
 
-  const FoodDetailModal = () => (
-    <Modal
-      visible={showFoodDetail}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => setShowFoodDetail(false)}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{selectedFood?.name}</Text>
-            <TouchableOpacity onPress={() => setShowFoodDetail(false)}>
-              <Icon name="x" size={24} color="#fff" />
-            </TouchableOpacity>
+  const renderMealSection = (title, mealType) => {
+    const mealItems = meals[mealType] || [];
+    return (
+      <View style={styles.mealSection}>
+        <View style={styles.mealHeader}>
+          <View style={styles.mealTitleContainer}>
+            <Icon 
+              name={
+                mealType === MEAL_TYPES.BREAKFAST ? 'sun' :
+                mealType === MEAL_TYPES.LUNCH ? 'coffee' :
+                mealType === MEAL_TYPES.DINNER ? 'moon' : 'package'
+              } 
+              size={24} 
+              color="#35AAFF" 
+            />
+            <Text style={styles.mealTitle}>{title}</Text>
           </View>
+          <TouchableOpacity onPress={() => handleAddFood(mealType)}>
+            <Icon name="plus" size={24} color="#35AAFF" />
+          </TouchableOpacity>
+        </View>
 
-          <View style={styles.nutritionGrid}>
-            <View style={styles.nutritionItem}>
-              <Text style={styles.nutritionLabel}>Calories</Text>
-              <Text style={styles.nutritionValue}>{selectedFood?.calories}</Text>
-            </View>
-            <View style={styles.nutritionItem}>
-              <Text style={styles.nutritionLabel}>Protein</Text>
-              <Text style={styles.nutritionValue}>{selectedFood?.protein}g</Text>
-            </View>
-            <View style={styles.nutritionItem}>
-              <Text style={styles.nutritionLabel}>Carbs</Text>
-              <Text style={styles.nutritionValue}>{selectedFood?.carbs}g</Text>
-            </View>
-            <View style={styles.nutritionItem}>
-              <Text style={styles.nutritionLabel}>Fat</Text>
-              <Text style={styles.nutritionValue}>{selectedFood?.fat}g</Text>
-            </View>
-          </View>
-
-          <View style={styles.infoSection}>
-            <Text style={styles.infoTitle}>Amount</Text>
-            <Text style={styles.infoText}>{selectedFood?.quantity}g</Text>
-          </View>
-
-          <View style={styles.infoSection}>
-            <Text style={styles.infoTitle}>Benefits</Text>
-            <Text style={styles.infoText}>{selectedFood?.benefits}</Text>
-          </View>
-
-          <View style={styles.infoSection}>
-            <Text style={styles.infoTitle}>Diet Information</Text>
-            <Text style={styles.infoText}>{selectedFood?.dietInfo}</Text>
-          </View>
-
-          <TouchableOpacity 
-            style={styles.removeButton} 
-            onPress={() => handleRemoveFood(selectedFood.mealType, selectedFood.index)}
+        {mealItems.map((food) => (
+          <TouchableOpacity
+            key={food.id} 
+            style={styles.foodItem}
+            onPress={() => handleEditFood(food)}
           >
-            <Text style={styles.removeButtonText}>Remove Food</Text>
+            <View style={styles.foodItemContent}>
+              <Text style={styles.foodName}>{food.nome_alimento}</Text>
+              <View style={styles.foodDetails}>
+                <Text style={styles.foodQuantity}>{food.quantidade_gramas.toFixed(0)}g</Text>
+                <Text style={styles.foodCalories}>{Math.round(food.calorias)} cal</Text>
+              </View>
+            </View>
+            <Icon name="edit-2" size={16} color="#35AAFF" />
           </TouchableOpacity>
-        </View>
+        ))}
       </View>
-    </Modal>
-  );
-
-  const CalorieGoalModal = () => (
-    <Modal
-      visible={showCalorieGoalModal}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => setShowCalorieGoalModal(false)}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Edit Calorie Goal</Text>
-            <TouchableOpacity onPress={() => setShowCalorieGoalModal(false)}>
-              <Icon name="x" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-          <TextInput
-            style={styles.calorieGoalInput}
-            value={tempCalorieGoal}
-            onChangeText={setTempCalorieGoal}
-            keyboardType="numeric"
-            placeholder="Enter calorie goal"
-            placeholderTextColor="#666"
-          />
-          <TouchableOpacity style={styles.saveButton} onPress={handleSaveCalorieGoal}>
-            <Text style={styles.saveButtonText}>Save</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-
-  const renderMealSection = (title, mealType) => (
-    <View style={styles.mealSection}>
-      <View style={styles.mealHeader}>
-        <View style={styles.mealTitleContainer}>
-          <Icon 
-            name={
-              mealType === MEAL_TYPES.BREAKFAST ? 'sun' :
-              mealType === MEAL_TYPES.LUNCH ? 'coffee' :
-              mealType === MEAL_TYPES.DINNER ? 'moon' : 'package'
-            } 
-            size={24} 
-            color="#35AAFF" 
-          />
-          <Text style={styles.mealTitle}>{title}</Text>
-        </View>
-        <TouchableOpacity onPress={() => handleAddFood(mealType)}>
-          <Icon name="plus" size={24} color="#35AAFF" />
-        </TouchableOpacity>
-      </View>
-
-      {meals[mealType]?.map((food, index) => (
-        <TouchableOpacity
-          key={index}
-          style={styles.foodItem}
-          onPress={() => {
-            setSelectedFood({ ...food, mealType, index });
-            setShowFoodDetail(true);
-          }}
-        >
-          <View>
-            <Text style={styles.foodName}>{food.name}</Text>
-            <Text style={styles.foodQuantity}>{food.quantity}g</Text>
-          </View>
-          <Text style={styles.foodCalories}>{food.calories} cal</Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -268,7 +254,7 @@ const FoodTrackerScreen = ({ navigation }) => {
 
       <ScrollView style={styles.content}>
         <View style={styles.statsCard}>
-          <Text style={styles.statsTitle}>Daily Summary</Text>
+          <Text style={styles.statsTitle}>Resumo Diário</Text>
           <View style={styles.calorieInfo}>
             <TouchableOpacity 
               style={styles.calorieGoalButton}
@@ -278,32 +264,35 @@ const FoodTrackerScreen = ({ navigation }) => {
               }}
             >
               <Text style={styles.calorieText}>
-                Goal: {calorieGoal} cal
+                Meta: {calorieGoal} cal
               </Text>
               <Icon name="edit-2" size={16} color="#35AAFF" />
             </TouchableOpacity>
             <Text style={styles.calorieText}>
-              Remaining: {Math.round(dailyStats.remainingCalories)} cal
+              Consumidas: {Math.round(dailyStats.totalCalories)} cal
             </Text>
-            <Text style={styles.calorieText}>
-              Consumed: {Math.round(dailyStats.totalCalories)} cal
+            <Text style={[
+              styles.calorieText,
+              { color: dailyStats.remainingCalories < 0 ? '#FF3B30' : '#4CD964' }
+            ]}>
+              Restantes: {Math.round(dailyStats.remainingCalories)} cal
             </Text>
           </View>
           <View style={styles.macroContainer}>
             <View style={styles.macroItem}>
-              <Text style={styles.macroLabel}>Protein</Text>
+              <Text style={styles.macroLabel}>Proteínas</Text>
               <Text style={styles.macroValue}>
                 {Math.round(dailyStats.macros.protein)}g
               </Text>
             </View>
             <View style={styles.macroItem}>
-              <Text style={styles.macroLabel}>Carbs</Text>
+              <Text style={styles.macroLabel}>Carboidratos</Text>
               <Text style={styles.macroValue}>
                 {Math.round(dailyStats.macros.carbs)}g
               </Text>
             </View>
             <View style={styles.macroItem}>
-              <Text style={styles.macroLabel}>Fat</Text>
+              <Text style={styles.macroLabel}>Gorduras</Text>
               <Text style={styles.macroValue}>
                 {Math.round(dailyStats.macros.fat)}g
               </Text>
@@ -311,14 +300,92 @@ const FoodTrackerScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {renderMealSection(MEAL_TYPES.BREAKFAST, MEAL_TYPES.BREAKFAST)}
-        {renderMealSection(MEAL_TYPES.LUNCH, MEAL_TYPES.LUNCH)}
-        {renderMealSection(MEAL_TYPES.DINNER, MEAL_TYPES.DINNER)}
-        {renderMealSection(MEAL_TYPES.SNACKS, MEAL_TYPES.SNACKS)}
+        {renderMealSection('Café da Manhã', MEAL_TYPES.BREAKFAST)}
+        {renderMealSection('Almoço', MEAL_TYPES.LUNCH)}
+        {renderMealSection('Jantar', MEAL_TYPES.DINNER)}
+        {renderMealSection('Lanches', MEAL_TYPES.SNACKS)}
       </ScrollView>
 
-      {selectedFood && <FoodDetailModal />}
-      <CalorieGoalModal />
+      <Modal
+        visible={showCalorieGoalModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Editar Meta de Calorias</Text>
+            <TextInput
+              style={styles.input}
+              value={tempCalorieGoal}
+              onChangeText={setTempCalorieGoal}
+              keyboardType="numeric"
+              placeholder="Digite a meta de calorias"
+              placeholderTextColor="#666"
+            />
+            <TouchableOpacity style={styles.saveButton} onPress={handleSaveCalorieGoal}>
+              <Text style={styles.saveButtonText}>Salvar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.cancelButton} 
+              onPress={() => setShowCalorieGoalModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={!!editingFood}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Editar Alimento</Text>
+              <TouchableOpacity onPress={() => setEditingFood(null)}>
+                <Icon name="x" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalFoodInfo}>
+              <Text style={styles.modalFoodName}>{editingFood?.nome_alimento}</Text>
+              <View style={styles.modalFoodStats}>
+                <Text style={styles.modalFoodCalories}>
+                  {Math.round(editingFood?.calorias || 0)} calorias
+                </Text>
+                <Text style={styles.modalFoodMacros}>
+                  P: {Math.round(editingFood?.proteinas || 0)}g | 
+                  C: {Math.round(editingFood?.carboidratos || 0)}g | 
+                  G: {Math.round(editingFood?.gorduras || 0)}g
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.inputLabel}>Quantidade (g)</Text>
+            <TextInput
+              style={styles.input}
+              value={editingQuantity}
+              onChangeText={setEditingQuantity}
+              keyboardType="numeric"
+              placeholder="Digite a quantidade em gramas"
+              placeholderTextColor="#666"
+            />
+
+            <TouchableOpacity style={styles.saveButton} onPress={handleUpdateFood}>
+              <Text style={styles.saveButtonText}>Atualizar</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.removeButton} 
+              onPress={() => handleRemoveFood(editingFood.id)}
+            >
+              <Text style={styles.removeButtonText}>Remover</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -377,9 +444,13 @@ const styles = StyleSheet.create({
   macroContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    backgroundColor: '#262626',
+    borderRadius: 8,
+    padding: 12,
   },
   macroItem: {
     alignItems: 'center',
+    flex: 1,
   },
   macroLabel: {
     color: '#999',
@@ -422,15 +493,24 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
   },
+  foodItemContent: {
+    flex: 1,
+    marginRight: 8,
+  },
   foodName: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  foodDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   foodQuantity: {
     color: '#35AAFF',
     fontSize: 14,
-    marginTop: 4,
+    marginRight: 8,
   },
   foodCalories: {
     color: '#999',
@@ -438,88 +518,97 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#191919',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#333',
+    borderRadius: 12,
     padding: 20,
-    maxHeight: '90%',
+    width: '90%',
+    maxWidth: 400,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   modalTitle: {
     color: '#fff',
     fontSize: 20,
     fontWeight: 'bold',
   },
-  nutritionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 20,
+  modalFoodInfo: {
+    backgroundColor: '#262626',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
   },
-  nutritionItem: {
-    width: '50%',
-    padding: 10,
-  },
-  nutritionLabel: {
-    color: '#666',
-    fontSize: 14,
-  },
-  nutritionValue: {
+  modalFoodName: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 8,
   },
-  infoSection: {
-    marginBottom: 20,
+  modalFoodStats: {
+    gap: 4,
   },
-  infoTitle: {
+  modalFoodCalories: {
+    color: '#35AAFF',
+    fontSize: 16,
+  },
+  modalFoodMacros: {
+    color: '#999',
+    fontSize: 14,
+  },
+  inputLabel: {
+    color: '#fff',
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#262626',
+    color: '#fff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    fontSize: 16,
+  },
+  saveButton: {
+    backgroundColor: '#35AAFF',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  saveButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  infoText: {
-    color: '#999',
-    fontSize: 14,
-    lineHeight: 20,
   },
   removeButton: {
-    backgroundColor: '#FF375B',
+    backgroundColor: '#FF3B30',
+    padding: 12,
     borderRadius: 8,
-    padding: 15,
     alignItems: 'center',
+    marginBottom: 8,
   },
   removeButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  calorieGoalInput: {
-    backgroundColor: '#333',
-    borderRadius: 8,
+  cancelButton: {
+    backgroundColor: '#444',
     padding: 12,
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  saveButton: {
-    backgroundColor: '#35AAFF',
     borderRadius: 8,
-    padding: 15,
     alignItems: 'center',
   },
-  saveButtonText: {
+  cancelButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
   },
 });
 

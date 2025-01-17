@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,11 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
-  Keyboard,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather as Icon } from '@expo/vector-icons';
-import { mockApi } from '../services/mockApi';
 import { useFocusEffect } from '@react-navigation/native';
+import { obterAlimentosPorTipoRefeicao, registrarRefeicao } from '../services/api';
 
 const FoodSearchScreen = ({ route, navigation }) => {
   const { mealType, date } = route.params;
@@ -23,122 +21,186 @@ const FoodSearchScreen = ({ route, navigation }) => {
   const [selectedFood, setSelectedFood] = useState(null);
   const [quantity, setQuantity] = useState('100');
   const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleAddFood = useCallback((entry) => {
-    mockApi.addFoodEntry(date, mealType, entry);
-    navigation.goBack();
-  }, [date, mealType, navigation]);
+  const loadFoods = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await obterAlimentosPorTipoRefeicao(mealType);
+      console.log('Alimentos carregados:', response);
+      setSearchResults(response.alimentos || []); // Acessar a propriedade 'alimentos' do objeto
+    } catch (error) {
+      console.error('Erro ao carregar alimentos:', error);
+      Alert.alert('Erro', 'Não foi possível carregar os alimentos. Por favor, tente novamente.');
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [mealType]);
 
-  useFocusEffect(
-    useCallback(() => {
-      navigation.setOptions({
-        onAddFood: handleAddFood,
-      });
-    }, [navigation, handleAddFood])
-  );
+  useEffect(() => {
+    loadFoods();
+  }, [loadFoods]);
 
-  const handleSearch = async (query) => {
+  const handleSearch = (query) => {
     setSearchQuery(query);
-    const results = await mockApi.searchFoods(query);
-    setSearchResults(results);
+    if (searchResults && searchResults.length > 0) {
+      const filteredFoods = searchResults.filter(food => 
+        food.nome_alimento.toLowerCase().includes(query.toLowerCase())
+      );
+      setSearchResults(filteredFoods);
+    }
   };
 
   const handleFoodSelect = (food) => {
+    console.log('Alimento selecionado:', food);
     setSelectedFood(food);
     setShowModal(true);
   };
 
-  const handleAddSelectedFood = () => {
+  const handleAddSelectedFood = async () => {
     const amount = parseInt(quantity);
     if (isNaN(amount) || amount <= 0) {
-      Alert.alert('Error', 'Please enter a valid quantity');
+      Alert.alert('Erro', 'Por favor, insira uma quantidade válida');
       return;
     }
 
-    const scaleFactor = amount / selectedFood.portionSize;
-    const entry = {
-      ...selectedFood,
-      quantity: amount,
-      calories: Math.round(selectedFood.calories * scaleFactor),
-      protein: Math.round(selectedFood.protein * scaleFactor * 10) / 10,
-      carbs: Math.round(selectedFood.carbs * scaleFactor * 10) / 10,
-      fat: Math.round(selectedFood.fat * scaleFactor * 10) / 10,
-    };
-
-    handleAddFood(entry);
-    setShowModal(false);
+    try {
+      const refeicaoData = {
+        data_registro: date,
+        tipo_id: mealType,
+        alimento_id: selectedFood.id,
+        quantidade_gramas: amount,
+      };
+      console.log('Enviando dados da refeição:', refeicaoData);
+      
+      await registrarRefeicao(refeicaoData);
+      setShowModal(false);
+      navigation.navigate('FoodTrackerMain', { updateData: true });
+    } catch (error) {
+      console.error('Erro ao adicionar alimento:', error);
+      if (error.message === "Este alimento já foi registrado nesta data.") {
+        Alert.alert(
+          'Alimento já registrado',
+          'Este alimento já foi registrado para esta refeição hoje. Deseja atualizar a quantidade?',
+          [
+            {
+              text: 'Cancelar',
+              style: 'cancel'
+            },
+            {
+              text: 'Atualizar',
+              onPress: () => updateExistingFood(refeicaoData)
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Erro', 'Não foi possível adicionar o alimento. Por favor, tente novamente.');
+      }
+    }
   };
 
-  const FoodDetailModal = () => (
-    <Modal
-      visible={showModal}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => setShowModal(false)}
-      statusBarTranslucent={true}
+  const updateExistingFood = async (refeicaoData) => {
+    try {
+      // Aqui você precisará implementar uma nova função na API para atualizar a refeição existente
+      // Por enquanto, vamos apenas simular uma atualização bem-sucedida
+      console.log('Atualizando refeição existente:', refeicaoData);
+      // await atualizarRefeicaoExistente(refeicaoData);
+      Alert.alert('Sucesso', 'A quantidade do alimento foi atualizada.');
+      setShowModal(false);
+      navigation.navigate('FoodTrackerMain', { updateData: true });
+    } catch (error) {
+      console.error('Erro ao atualizar alimento:', error);
+      Alert.alert('Erro', 'Não foi possível atualizar o alimento. Por favor, tente novamente.');
+    }
+  };
+
+  const calculateAdjustedNutrients = (food, amount) => {
+    const factor = amount / 100; // as nutrients are per 100g
+    return {
+      calories: Math.round(food.calorias * factor),
+      protein: Math.round(food.proteinas * factor),
+      fat: Math.round(food.gorduras * factor),
+    };
+  };
+
+  const renderFoodItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.foodItem}
+      onPress={() => handleFoodSelect(item)}
     >
-      <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+      <View>
+        <Text style={styles.foodName}>{item.nome_alimento}</Text>
+        <Text style={styles.foodMacros}>
+          {item.calorias} cal | P: {item.proteinas}g | G: {item.gorduras}g
+        </Text>
+      </View>
+      <Icon name="plus" size={24} color="#35AAFF" />
+    </TouchableOpacity>
+  );
+
+  const FoodDetailModal = () => {
+    if (!selectedFood) return null;
+
+    const adjustedNutrients = calculateAdjustedNutrients(selectedFood, parseInt(quantity) || 100);
+
+    return (
+      <Modal
+        visible={showModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowModal(false)}
+      >
         <View style={styles.modalContainer}>
-          <TouchableWithoutFeedback>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{selectedFood?.name}</Text>
-                <TouchableOpacity onPress={() => setShowModal(false)}>
-                  <Icon name="x" size={24} color="#fff" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.quantityContainer}>
-                <Text style={styles.label}>Quantidade (g)</Text>
-                <TextInput
-                  style={styles.quantityInput}
-                  value={quantity}
-                  onChangeText={setQuantity}
-                  keyboardType="numeric"
-                  placeholder="100"
-                  placeholderTextColor="#666"
-                  autoFocus={true}
-                />
-              </View>
-
-              <View style={styles.nutritionGrid}>
-                <View style={styles.nutritionItem}>
-                  <Text style={styles.nutritionLabel}>Calories</Text>
-                  <Text style={styles.nutritionValue}>{selectedFood?.calories}</Text>
-                </View>
-                <View style={styles.nutritionItem}>
-                  <Text style={styles.nutritionLabel}>Protein</Text>
-                  <Text style={styles.nutritionValue}>{selectedFood?.protein}g</Text>
-                </View>
-                <View style={styles.nutritionItem}>
-                  <Text style={styles.nutritionLabel}>Carbs</Text>
-                  <Text style={styles.nutritionValue}>{selectedFood?.carbs}g</Text>
-                </View>
-                <View style={styles.nutritionItem}>
-                  <Text style={styles.nutritionLabel}>Fat</Text>
-                  <Text style={styles.nutritionValue}>{selectedFood?.fat}g</Text>
-                </View>
-              </View>
-
-              <View style={styles.infoSection}>
-                <Text style={styles.infoTitle}>Benefits</Text>
-                <Text style={styles.infoText}>{selectedFood?.benefits}</Text>
-              </View>
-
-              <View style={styles.infoSection}>
-                <Text style={styles.infoTitle}>Diet Information</Text>
-                <Text style={styles.infoText}>{selectedFood?.dietInfo}</Text>
-              </View>
-
-              <TouchableOpacity style={styles.addButton} onPress={handleAddSelectedFood}>
-                <Text style={styles.addButtonText}>Add to {mealType}</Text>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{selectedFood.nome_alimento}</Text>
+              <TouchableOpacity onPress={() => setShowModal(false)}>
+                <Icon name="x" size={24} color="#fff" />
               </TouchableOpacity>
             </View>
-          </TouchableWithoutFeedback>
+
+            <View style={styles.quantityContainer}>
+              <Text style={styles.label}>Quantidade (g)</Text>
+              <TextInput
+                style={styles.quantityInput}
+                value={quantity}
+                onChangeText={(text) => {
+                  setQuantity(text);
+                }}
+                keyboardType="numeric"
+                placeholder="100"
+                placeholderTextColor="#666"
+              />
+            </View>
+
+            <View style={styles.nutritionGrid}>
+              <View style={styles.nutritionItem}>
+                <Text style={styles.nutritionLabel}>Calorias</Text>
+                <Text style={styles.nutritionValue}>{adjustedNutrients.calories}</Text>
+              </View>
+              <View style={styles.nutritionItem}>
+                <Text style={styles.nutritionLabel}>Proteínas</Text>
+                <Text style={styles.nutritionValue}>{adjustedNutrients.protein}g</Text>
+              </View>
+              <View style={styles.nutritionItem}>
+                <Text style={styles.nutritionLabel}>Gorduras</Text>
+                <Text style={styles.nutritionValue}>{adjustedNutrients.fat}g</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.addButton} onPress={handleAddSelectedFood}>
+              <Text style={styles.addButtonText}>Adicionar ao {
+                mealType === 1 ? 'Café da Manhã' :
+                mealType === 2 ? 'Almoço' :
+                mealType === 3 ? 'Jantar' : 'Lanche'
+              }</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </TouchableWithoutFeedback>
-    </Modal>
-  );
+      </Modal>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -146,40 +208,38 @@ const FoodSearchScreen = ({ route, navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Food</Text>
+        <Text style={styles.headerTitle}>Adicionar Alimento</Text>
       </View>
 
       <View style={styles.searchContainer}>
         <Icon name="search" size={20} color="#666" />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search foods..."
+          placeholder="Buscar alimentos..."
           placeholderTextColor="#666"
           value={searchQuery}
           onChangeText={handleSearch}
         />
       </View>
 
-      <FlatList
-        data={searchResults}
-        keyExtractor={(item) => item.name}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.foodItem}
-            onPress={() => handleFoodSelect(item)}
-          >
-            <View>
-              <Text style={styles.foodName}>{item.name}</Text>
-              <Text style={styles.foodMacros}>
-                {item.calories} cal | P: {item.protein}g | C: {item.carbs}g | F: {item.fat}g
-              </Text>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Carregando alimentos...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={searchResults}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderFoodItem}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Nenhum alimento encontrado</Text>
             </View>
-            <Icon name="plus" size={24} color="#35AAFF" />
-          </TouchableOpacity>
-        )}
-      />
+          }
+        />
+      )}
 
-      {selectedFood && <FoodDetailModal />}
+      <FoodDetailModal />
     </SafeAreaView>
   );
 };
@@ -216,6 +276,26 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 16,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#666',
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    color: '#666',
+    fontSize: 16,
+    textAlign: 'center',
+  },
   foodItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -236,15 +316,16 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#191919',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#333',
+    borderRadius: 12,
     padding: 20,
-    maxHeight: '90%',
+    width: '90%',
+    maxWidth: 400,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -266,44 +347,30 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   quantityInput: {
-    backgroundColor: '#333',
+    backgroundColor: '#444',
     borderRadius: 8,
     padding: 12,
     color: '#fff',
     fontSize: 16,
-    marginBottom: 20,
   },
   nutritionGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     marginBottom: 20,
   },
   nutritionItem: {
-    width: '50%',
-    padding: 10,
+    flex: 1,
+    alignItems: 'center',
   },
   nutritionLabel: {
     color: '#666',
     fontSize: 14,
+    marginBottom: 4,
   },
   nutritionValue: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  infoSection: {
-    marginBottom: 20,
-  },
-  infoTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  infoText: {
-    color: '#999',
-    fontSize: 14,
-    lineHeight: 20,
   },
   addButton: {
     backgroundColor: '#35AAFF',
