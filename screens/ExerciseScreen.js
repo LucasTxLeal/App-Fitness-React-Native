@@ -1,144 +1,159 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  ScrollView,
   TextInput,
-  Platform,
-  StatusBar,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather as Icon } from '@expo/vector-icons';
-
-const categories = [
-  { id: 'biceps', name: 'Bíceps' },
-  { id: 'costas', name: 'Costas' },
-  { id: 'cardio', name: 'Cardio' },
-  { id: 'peito', name: 'Peito' },
-  { id: 'pernas', name: 'Pernas' },
-  { id: 'ombros', name: 'Ombros' },
-  { id: 'triceps', name: 'Tríceps' },
-  { id: 'abdomen', name: 'Abdômen' },
-];
-
-const exercises = {
-  biceps: [
-    {
-      id: '1',
-      name: 'Rosca Direta (Halter)',
-      description: 'Execute o movimento controlado, mantendo os cotovelos fixos ao lado do corpo.',
-      muscles: ['Bíceps Braquial', 'Braquial'],
-      equipment: 'Halteres',
-      difficulty: 'Iniciante',
-    },
-    {
-      id: '2',
-      name: 'Rosca Martelo',
-      description: 'Realize o exercício com pegada neutra, simulando um movimento de martelo.',
-      muscles: ['Bíceps Braquial', 'Braquiorradial'],
-      equipment: 'Halteres',
-      difficulty: 'Iniciante',
-    },
-    {
-      id: '3',
-      name: 'Remada Curvada',
-      description: 'Mantenha as costas retas e puxe os pesos em direção ao abdômen.',
-      muscles: ['Bíceps', 'Costas'],
-      equipment: 'Barra ou Halteres',
-      difficulty: 'Intermediário',
-    },
-  ],
-  costas: [
-    { id: 'c1', name: 'Puxada na Barra Fixa', description: 'Exercício para as costas usando o peso corporal.', muscles: ['Latíssimo do Dorso', 'Bíceps'], equipment: 'Barra Fixa', difficulty: 'Intermediário' },
-    { id: 'c2', name: 'Remada Curvada', description: 'Exercício composto para as costas usando barra ou halteres.', muscles: ['Latíssimo do Dorso', 'Trapézio', 'Romboides'], equipment: 'Barra ou Halteres', difficulty: 'Intermediário' },
-    { id: 'c3', name: 'Puxada na Máquina', description: 'Exercício para as costas usando máquina de puxada.', muscles: ['Latíssimo do Dorso', 'Bíceps'], equipment: 'Máquina de Puxada', difficulty: 'Iniciante' },
-  ],
-};
+import { obterExerciciosPorTipo, obterTiposExercicios } from '../services/api';
 
 const ExerciseScreen = ({ navigation }) => {
-  const [selectedCategory, setSelectedCategory] = useState('biceps');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedType, setSelectedType] = useState(null);
+  const [exercises, setExercises] = useState([]);
+  const [exerciseTypes, setExerciseTypes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const filteredExercises =
-    exercises[selectedCategory]?.filter((exercise) =>
-      exercise.name.toLowerCase().includes(searchQuery.toLowerCase())
-    ) || [];
+  // Carregar tipos de exercícios
+  useEffect(() => {
+    const loadExerciseTypes = async () => {
+      try {
+        const response = await obterTiposExercicios();
+        setExerciseTypes(response);
+      } catch (error) {
+        console.error('Erro ao carregar tipos de exercícios:', error);
+        setError('Não foi possível carregar os tipos de exercícios.');
+      }
+    };
+    loadExerciseTypes();
+  }, []);
 
-  const renderExerciseList = () => {
-    if (filteredExercises.length === 0) {
-      return (
-        <View style={styles.noExercisesContainer}>
-          <Text style={styles.noExercisesText}>No exercises found for this category.</Text>
-        </View>
-      );
+  // Carregar exercícios quando um tipo é selecionado
+  const loadExercises = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await obterExerciciosPorTipo(selectedType);
+      console.log('Exercícios carregados:', data.exercicios);
+      setExercises(data.exercicios || []);
+    } catch (error) {
+      console.error('Erro ao carregar exercícios:', error);
+      setError('Não foi possível carregar os exercícios. Por favor, tente novamente.');
+      setExercises([]);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    return (
-      <FlatList
-        data={filteredExercises}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.exerciseItem}
-            onPress={() => navigation.navigate('ExerciseDetail', { exercise: item })}
-          >
-            <View style={styles.exerciseContent}>
-              <Text style={styles.exerciseName}>{item.name}</Text>
-              <Text style={styles.exerciseDescription}>{item.description.slice(0, 60)}...</Text>
-            </View>
-            <Icon name="chevron-right" size={20} color="#35AAFF" />
-          </TouchableOpacity>
-        )}
-        contentContainerStyle={styles.exerciseList}
-      />
-    );
+  useEffect(() => {
+    loadExercises();
+  }, [selectedType]);
+
+  const filteredExercises = exercises.filter(exercise =>
+    exercise.nome.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleTypeSelect = (typeId) => {
+    setSelectedType(prevSelected => prevSelected === typeId ? null : typeId);
   };
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Exercícios</Text>
+      </View>
+
       <View style={styles.searchContainer}>
         <Icon name="search" size={20} color="#666" />
         <TextInput
           style={styles.searchInput}
           placeholder="Pesquisar exercício..."
-          placeholderTextColor="#aaa"
+          placeholderTextColor="#666"
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
       </View>
 
-      <View style={styles.categoriesContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesScrollView}
-        >
-          {categories.map((category) => (
-            <TouchableOpacity
-              key={category.id}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.typeGroupsContainer}
+      >
+        {exerciseTypes.map((type) => (
+          <TouchableOpacity
+            key={type.id}
+            style={[
+              styles.typeButton,
+              selectedType === type.id && styles.selectedType,
+            ]}
+            onPress={() => handleTypeSelect(type.id)}
+          >
+            <Text
               style={[
-                styles.categoryButton,
-                selectedCategory === category.id && styles.selectedCategory,
+                styles.typeText,
+                selectedType === type.id && styles.selectedTypeText,
               ]}
-              onPress={() => setSelectedCategory(category.id)}
             >
-              <Text
-                style={[
-                  styles.categoryText,
-                  selectedCategory === category.id && styles.selectedCategoryText,
-                ]}
-              >
-                {category.name}
-              </Text>
+              {type.nome}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {loading ? (
+        <ActivityIndicator size="large" color="#35AAFF" style={styles.loader} />
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton} 
+            onPress={loadExercises}
+          >
+            <Text style={styles.retryButtonText}>Tentar Novamente</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView style={styles.exerciseList}>
+          {filteredExercises.map((exercise) => (
+            <TouchableOpacity
+              key={exercise.id}
+              style={styles.exerciseItem}
+              onPress={() => navigation.navigate('ExerciseDetail', { exerciseId: exercise.id })}
+            >
+              <View>
+                <Text style={styles.exerciseName}>{exercise.nome}</Text>
+                <Text style={styles.exerciseDescription} numberOfLines={2}>
+                  {exercise.descricao}
+                </Text>
+                <Text style={styles.muscleTarget}>
+                  Músculo: {exercise.musculo_alvo}
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={24} color="#35AAFF" />
             </TouchableOpacity>
           ))}
+          {selectedType && filteredExercises.length === 0 && !loading && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>
+                Nenhum exercício encontrado para este tipo
+              </Text>
+            </View>
+          )}
+          {!selectedType && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>
+                Selecione um tipo de exercício para ver os exercícios
+              </Text>
+            </View>
+          )}
         </ScrollView>
-      </View>
-
-      {renderExerciseList()}
+      )}
     </SafeAreaView>
   );
 };
@@ -148,81 +163,117 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#191919',
   },
+  header: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#333',
     margin: 16,
     padding: 12,
+    backgroundColor: '#333',
     borderRadius: 8,
   },
   searchInput: {
     flex: 1,
-    color: '#fff',
     marginLeft: 8,
+    color: '#FFFFFF',
     fontSize: 16,
   },
-  categoriesContainer: {
-    backgroundColor: '#222',
-    paddingVertical: 12,
-  },
-  categoriesScrollView: {
+  typeGroupsContainer: {
     paddingHorizontal: 16,
+    marginBottom: 16,
   },
-  categoryButton: {
+  typeButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
     backgroundColor: '#333',
+    borderRadius: 20,
     marginRight: 8,
   },
-  selectedCategory: {
+  selectedType: {
     backgroundColor: '#35AAFF',
   },
-  categoryText: {
-    color: '#fff',
+  typeText: {
+    color: '#FFFFFF',
     fontSize: 14,
   },
-  selectedCategoryText: {
+  selectedTypeText: {
     fontWeight: 'bold',
   },
   exerciseList: {
-    paddingVertical: 16,
+    flex: 1,
+    padding: 16,
   },
   exerciseItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#333',
-    borderRadius: 8,
-    marginHorizontal: 16,
-    marginBottom: 12,
     padding: 16,
-  },
-  exerciseContent: {
-    flex: 1,
-    marginRight: 16,
+    borderRadius: 8,
+    marginBottom: 8,
   },
   exerciseName: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   exerciseDescription: {
-    color: '#aaa',
     fontSize: 14,
+    color: '#999',
+    maxWidth: '90%',
+    marginBottom: 4,
   },
-  noExercisesContainer: {
+  muscleTarget: {
+    fontSize: 12,
+    color: '#35AAFF',
+  },
+  loader: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
   },
-  noExercisesText: {
-    color: '#fff',
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  emptyStateText: {
+    color: '#999',
     fontSize: 16,
     textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#35AAFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

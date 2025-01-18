@@ -22,6 +22,8 @@ import TrainingScreen from './screens/TrainingScreen';
 import CreateWorkoutPlanScreen from './screens/CreateWorkoutPlanScreen';
 import WorkoutPlanDetailScreen from './screens/WorkoutPlanDetailScreen';
 import ProgressScreen from './screens/ProgressScreen';
+import RequestTrainerScreen from './screens/RequestTrainerScreen';
+import ManageRequestsScreen from './screens/ManageRequestsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -231,6 +233,26 @@ const MainDrawer = () => {
           title: 'Training Plan',
           drawerIcon: ({ color, size }) => (
             <Icon name="calendar" color={color} size={size} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="RequestTrainer"
+        component={RequestTrainerScreen}
+        options={{
+          title: 'Solicitar Personal',
+          drawerIcon: ({ color, size }) => (
+            <Icon name="user-plus" color={color} size={size} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="ManageRequests"
+        component={ManageRequestsScreen}
+        options={{
+          title: 'Gerenciar Solicitações',
+          drawerIcon: ({ color, size }) => (
+            <Icon name="users" color={color} size={size} />
           ),
         }}
       />

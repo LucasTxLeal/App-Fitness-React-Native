@@ -53,6 +53,36 @@ const initializeFoodDatabase = async () => {
 // Initialize the food database
 initializeFoodDatabase();
 
+// Mock data for personal trainer requests
+const MOCK_REQUESTS = [
+  {
+    id: 1,
+    usuario: {
+      nome: 'João Silva',
+    },
+    data_solicitacao: '2024-01-18',
+    objetivo: 'Ganho de massa muscular e definição',
+    disponibilidade: {
+      horarios: ['Manhã (6h-12h)', 'Noite (18h-22h)'],
+      dias: ['Segunda', 'Quarta', 'Sexta']
+    },
+    mensagem: 'Gostaria de começar o quanto antes!'
+  },
+  {
+    id: 2,
+    usuario: {
+      nome: 'Maria Santos',
+    },
+    data_solicitacao: '2024-01-17',
+    objetivo: 'Perda de peso e condicionamento',
+    disponibilidade: {
+      horarios: ['Tarde (12h-18h)'],
+      dias: ['Terça', 'Quinta', 'Sábado']
+    },
+    mensagem: 'Preciso de ajuda para atingir meus objetivos de forma saudável.'
+  }
+];
+
 export const mockApi = {
   // Get food entries for a specific date
   getFoodEntries: async (date) => {
@@ -161,5 +191,44 @@ export const mockApi = {
       return false;
     }
   },
+
+  // New functions for personal trainer requests
+  obterSolicitacoesPersonal: async () => {
+    // Simula um delay de rede
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return MOCK_REQUESTS;
+  },
+
+  aceitarSolicitacao: async (solicitacaoId) => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return { success: true };
+  },
+
+  recusarSolicitacao: async (solicitacaoId) => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return { success: true };
+  },
+
+  enviarSolicitacaoPersonal: async (dadosSolicitacao) => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return { success: true };
+  },
 };
+
+export const {
+  getFoodEntries,
+  addFoodEntry,
+  removeFoodEntry,
+  searchFoods,
+  getFoodDetails,
+  clearAllData,
+  getCalorieGoal,
+  setCalorieGoal,
+  obterSolicitacoesPersonal,
+  aceitarSolicitacao,
+  recusarSolicitacao,
+  enviarSolicitacaoPersonal,
+} = mockApi;
+
+export default mockApi;
 

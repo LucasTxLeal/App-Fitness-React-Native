@@ -39,15 +39,13 @@ const MetaCaloria = async (req, res) => {
   
   
   
-  
-  
   ///////////////////////////////////////////
   const RegistrarConsumo = async (req, res) => {
     try {
       const userId = req.user.id; // Obtém o ID do usuário do token
       const { tipo_id, alimento_id, quantidade_gramas, data_registro } = req.body; // Obtém os dados enviados
   
-      console.log('Dados recebidos:', req.body); // Adicionando um log para verificar os dados
+      
   
       // Verifica se todos os campos obrigatórios estão presentes
       if (!tipo_id || !alimento_id || !quantidade_gramas || !data_registro) {
@@ -105,19 +103,6 @@ const MetaCaloria = async (req, res) => {
   };
   
   
-  
-  
-  
-  
-
-  
-  
-  
-
-
-
-
-
   const EditarConsumo = async (req, res) => {
     try {
         const { id } = req.params; // ID do consumo a ser atualizado
@@ -176,10 +161,6 @@ const MetaCaloria = async (req, res) => {
 
 
 
-  
-
-  
-
 const ExcluirConsumo = async (req, res) => {
   try {
       const { id } = req.params; // ID do consumo a ser excluído
@@ -237,13 +218,12 @@ const ExcluirConsumo = async (req, res) => {
         include: {
           model: Alimentos,
           as: 'alimento', // Associar com o modelo Alimentos
-          attributes: ['calorias', 'proteinas', 'gorduras'], // Inclui apenas os campos necessários
+          attributes: ['calorias', 'proteinas', 'gorduras', 'carboidratos'], // Inclui os campos necessários
         },
         attributes: ['id', 'quantidade_gramas', 'data_registro'], // Define os campos necessários de Refeicoes
         raw: false, // Evita transformar em objetos puros para manter as associações
       });
   
-      console.log('Refeições encontradas:', refeicoes);
   
       // Se nenhuma refeição for encontrada
       if (!refeicoes || refeicoes.length === 0) {
@@ -255,7 +235,8 @@ const ExcluirConsumo = async (req, res) => {
         SELECT 
           COALESCE(SUM(alimentos.calorias * refeicoes.quantidade_gramas / 100), 0) as calorias,
           COALESCE(SUM(alimentos.proteinas * refeicoes.quantidade_gramas / 100), 0) as proteinas,
-          COALESCE(SUM(alimentos.gorduras * refeicoes.quantidade_gramas / 100), 0) as gorduras
+          COALESCE(SUM(alimentos.gorduras * refeicoes.quantidade_gramas / 100), 0) as gorduras,
+          COALESCE(SUM(alimentos.carboidratos * refeicoes.quantidade_gramas / 100), 0) as carboidratos
         FROM refeicoes
         INNER JOIN alimentos ON refeicoes.alimento_id = alimentos.id
         WHERE refeicoes.contaid = :userId AND refeicoes.data_registro = :data_registro
@@ -264,7 +245,6 @@ const ExcluirConsumo = async (req, res) => {
         type: Sequelize.QueryTypes.SELECT,
       });
   
-      console.log('Resumo final:', resumo);
   
       // Retorna o resumo diário
       res.status(200).json({ data_registro, resumo });
@@ -274,16 +254,15 @@ const ExcluirConsumo = async (req, res) => {
     }
   };
   
-
   const ObterRefeicoesPorUsuario = async (req, res) => {
     try {
-      const { data_registro } = req.params;  // Data da URL
+      const { data_registro } = req.params; // Data da URL
       const userId = req.user.id;
-      console.log(req.body);
+  
       // Log para depuração
       console.log('Parâmetro data_registro:', data_registro);
       console.log('ID do usuário autenticado:', userId);
-    
+  
       // Busca refeições pelo usuário e data
       const refeicoes = await Refeicoes.findAll({
         where: {
@@ -292,8 +271,8 @@ const ExcluirConsumo = async (req, res) => {
         },
         include: {
           model: Alimentos,
-          as: 'alimento',  // Deve ser o mesmo alias definido no belongsTo
-          attributes: ['nome_alimento', 'calorias', 'proteinas', 'gorduras'],
+          as: 'alimento', // Deve ser o mesmo alias definido no belongsTo
+          attributes: ['nome_alimento', 'calorias', 'proteinas', 'gorduras', 'carboidratos'], // Inclui carboidratos
         },
       });
   
@@ -303,12 +282,10 @@ const ExcluirConsumo = async (req, res) => {
   
       res.status(200).json({ refeicoes });
     } catch (error) {
-      console.error(error);  // Log de erro para debugging
+      console.error('Erro ao buscar refeições:', error); // Log de erro para debugging
       res.status(500).json({ message: 'Erro ao buscar refeições', error });
     }
   };
-  
-
   
 
 const ObterAlimentosPorTipo = async (req, res) => {

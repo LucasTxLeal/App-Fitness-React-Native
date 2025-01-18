@@ -52,7 +52,7 @@ const FoodTrackerScreen = ({ navigation }) => {
     try {
       const dateKey = selectedDate.toISOString().split('T')[0];
       const mealsResponse = await obterRefeicoesDiarias(dateKey);
-      
+    
       if (mealsResponse && mealsResponse.refeicoes) {
         const organizedMeals = {
           [MEAL_TYPES.BREAKFAST]: [],
@@ -62,7 +62,7 @@ const FoodTrackerScreen = ({ navigation }) => {
         };
       
         mealsResponse.refeicoes.forEach(meal => {
-          if (organizedMeals[meal.tipo_id]) {
+          if (organizedMeals[meal.tipo_id] && meal.alimento) {
             const quantidade = parseFloat(meal.quantidade_gramas);
             const caloriasPor100g = parseFloat(meal.alimento.calorias);
             const caloriasTotal = (caloriasPor100g * quantidade) / 100;
@@ -70,17 +70,18 @@ const FoodTrackerScreen = ({ navigation }) => {
             organizedMeals[meal.tipo_id].push({
               id: meal.id,
               nome_alimento: meal.alimento.nome_alimento,
-              quantidade_gramas: parseFloat(meal.quantidade_gramas),
-              calorias: meal.alimento.calorias * (parseFloat(meal.quantidade_gramas) / 100),
-              proteinas: meal.alimento.proteinas * (parseFloat(meal.quantidade_gramas) / 100),
-              carboidratos: meal.alimento.carboidratos * (parseFloat(meal.quantidade_gramas) / 100),
-              gorduras: meal.alimento.gorduras * (parseFloat(meal.quantidade_gramas) / 100),
+              quantidade_gramas: quantidade,
+              calorias: caloriasTotal,
+              proteinas: (meal.alimento.proteinas * quantidade) / 100,
+              gorduras: (meal.alimento.gorduras * quantidade) / 100,
+              carboidratos: (meal.alimento.carboidratos * quantidade) / 100,
             });
           }
         });
       
         setMeals(organizedMeals);
       } else {
+        console.warn('Invalid or empty meals response:', mealsResponse);
         setMeals({});
       }
 
@@ -88,15 +89,16 @@ const FoodTrackerScreen = ({ navigation }) => {
     
       if (summaryResponse && summaryResponse.resumo) {
         setDailyStats({
-          totalCalories: parseFloat(summaryResponse.resumo.calorias) || 0,
-          remainingCalories: calorieGoal - (parseFloat(summaryResponse.resumo.calorias) || 0),
+          totalCalories: Math.round(parseFloat(summaryResponse.resumo.calorias) || 0),
+          remainingCalories: Math.round(calorieGoal - (parseFloat(summaryResponse.resumo.calorias) || 0)),
           macros: {
-            protein: parseFloat(summaryResponse.resumo.proteinas) || 0,
-            carbs: parseFloat(summaryResponse.resumo.carboidratos) || 0,
-            fat: parseFloat(summaryResponse.resumo.gorduras) || 0,
+            protein: Math.round(parseFloat(summaryResponse.resumo.proteinas) || 0),
+            carbs: Math.round(parseFloat(summaryResponse.resumo.carboidratos) || 0),
+            fat: Math.round(parseFloat(summaryResponse.resumo.gorduras) || 0),
           },
         });
       } else {
+        console.warn('Invalid or empty summary response:', summaryResponse);
         setDailyStats({
           totalCalories: 0,
           remainingCalories: calorieGoal,
@@ -105,6 +107,7 @@ const FoodTrackerScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
+      Alert.alert('Erro', 'Não foi possível carregar os dados. Por favor, tente novamente.');
       setMeals({});
       setDailyStats({
         totalCalories: 0,
@@ -224,6 +227,11 @@ const FoodTrackerScreen = ({ navigation }) => {
               <View style={styles.foodDetails}>
                 <Text style={styles.foodQuantity}>{food.quantidade_gramas.toFixed(0)}g</Text>
                 <Text style={styles.foodCalories}>{Math.round(food.calorias)} cal</Text>
+              </View>
+              <View style={styles.macroDetails}>
+                <Text style={styles.macroText}>P: {food.proteinas.toFixed(1)}g</Text>
+                <Text style={styles.macroText}>C: {food.carboidratos.toFixed(1)}g</Text>
+                <Text style={styles.macroText}>G: {food.gorduras.toFixed(1)}g</Text>
               </View>
             </View>
             <Icon name="edit-2" size={16} color="#35AAFF" />
@@ -609,6 +617,15 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: '#fff',
     fontSize: 16,
+  },
+  macroDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  macroText: {
+    color: '#999',
+    fontSize: 12,
   },
 });
 

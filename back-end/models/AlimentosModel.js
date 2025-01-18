@@ -6,22 +6,22 @@ const Alimentos = db.define('Alimentos', {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true,
-    field: 'id',  // Nome da coluna no banco de dados
+    field: 'id', // Nome da coluna no banco de dados
   },
   nome_alimento: {
     type: DataTypes.STRING(100),
     allowNull: false,
-    field: 'nome_alimento',  // Nome da coluna no banco de dados
+    field: 'nome_alimento', // Nome da coluna no banco de dados
   },
   tipo_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'tipos_alimentos',  // Nome da tabela referenciada
+      model: 'tipos_alimentos', // Nome da tabela referenciada
       key: 'id',
     },
     onDelete: 'CASCADE',
-    field: 'tipo_id',  // Nome da coluna no banco de dados
+    field: 'tipo_id', // Nome da coluna no banco de dados
   },
   calorias: {
     type: DataTypes.INTEGER,
@@ -29,7 +29,7 @@ const Alimentos = db.define('Alimentos', {
     validate: {
       min: 0,
     },
-    field: 'calorias',  // Nome da coluna no banco de dados
+    field: 'calorias', // Nome da coluna no banco de dados
   },
   proteinas: {
     type: DataTypes.INTEGER,
@@ -37,7 +37,7 @@ const Alimentos = db.define('Alimentos', {
     validate: {
       min: 0,
     },
-    field: 'proteinas',  // Nome da coluna no banco de dados
+    field: 'proteinas', // Nome da coluna no banco de dados
   },
   gorduras: {
     type: DataTypes.INTEGER,
@@ -45,10 +45,18 @@ const Alimentos = db.define('Alimentos', {
     validate: {
       min: 0,
     },
-    field: 'gorduras',  // Nome da coluna no banco de dados
+    field: 'gorduras', // Nome da coluna no banco de dados
+  },
+  carboidratos: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    validate: {
+      min: 0,
+    },
+    field: 'carboidratos', // Nome da coluna no banco de dados
   },
 }, {
-  tableName: 'alimentos',  // Nome da tabela no banco de dados
+  tableName: 'alimentos', // Nome da tabela no banco de dados
   timestamps: false,
 });
 

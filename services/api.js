@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
-const API_URL = 'http://192.168.0.215:3000/api';
+const API_URL = 'http://192.168.0.215:3000/api'; // Adjust this URL if needed
 console.log('URL da API:', API_URL);
 
 const api = axios.create({
@@ -306,6 +306,172 @@ export const atualizarRefeicao = async (id, dadosRefeicao) => {
   }
 };
 
+// Novas rotas para Personal Trainer
+export const enviarSolicitacaoPersonal = async (dadosSolicitacao) => {
+  try {
+    const response = await api.post('/personal/solicitar', dadosSolicitacao);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao enviar solicitação:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const obterSolicitacoesPersonal = async () => {
+  try {
+    const response = await api.get('/personal/solicitacoes');
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao obter solicitações:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const aceitarSolicitacao = async (solicitacaoId) => {
+  try {
+    const response = await api.post(`/personal/solicitacoes/${solicitacaoId}/aceitar`);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao aceitar solicitação:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const recusarSolicitacao = async (solicitacaoId) => {
+  try {
+    const response = await api.post(`/personal/solicitacoes/${solicitacaoId}/recusar`);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao recusar solicitação:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+export const enviarPlanoTreino = async (solicitacaoId, dadosPlano) => {
+  try {
+    const response = await api.post(`/personal/solicitacoes/${solicitacaoId}/plano`, dadosPlano);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao enviar plano:', error.response?.data || error.message);
+    throw error.response?.data || error.message;
+  }
+};
+
+// Exercícios
+export const obterExercicios = async () => {
+  try {
+    const response = await api.get('/exercicios');
+    console.log('Resposta da API (exercícios):', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao obter exercícios:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const obterTiposExercicios = async () => {
+  try {
+    // Retorna os tipos de exercícios do banco
+    const tipos = [
+      { id: 1, nome: 'Peito' },
+      { id: 2, nome: 'Biceps' },
+      { id: 3, nome: 'Costas' },
+      { id: 4, nome: 'Cardio' },
+      { id: 5, nome: 'Pernas' },
+      { id: 6, nome: 'Ombros' },
+      { id: 7, nome: 'Triceps' },
+      { id: 8, nome: 'Abdômen' }
+    ];
+    return tipos;
+  } catch (error) {
+    console.error('Erro ao obter tipos de exercícios:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const obterExerciciosPorTipo = async (tipoId) => {
+  try {
+    if (!tipoId) {
+      const response = await obterExercicios();
+      return response;
+    }
+    
+    // Atualizando o endpoint para a rota correta
+    const response = await api.get(`/planos/exercicios/${tipoId}`);
+    console.log('Exercícios por tipo:', response.data);
+    return { exercicios: response.data };
+  } catch (error) {
+    console.error('Erro ao obter exercícios por tipo:', error);
+    if (error.response?.status === 404) {
+      return { exercicios: [] };
+    }
+    throw error;
+  }
+};
+
+export const obterExercicioPorId = async (id) => {
+  try {
+    const response = await api.get(`/exercicios/${id}`);
+    console.log('Exercício por ID:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao obter exercício por ID:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Planos de Treino
+export const obterPlanosTreino = async () => {
+  try {
+    const response = await api.get('/planos-treino');
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao obter planos de treino:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const obterTreinoDoDia = async (data) => {
+  try {
+    const response = await api.get(`/planos-treino/dia/${data}`);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao obter treino do dia:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const criarPlanoTreino = async (dadosPlano) => {
+  try {
+    const response = await api.post('/planos-treino', dadosPlano);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao criar plano de treino:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const atualizarPlanoTreino = async (id, dadosPlano) => {
+  try {
+    const response = await api.put(`/planos-treino/${id}`, dadosPlano);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao atualizar plano de treino:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const deletarPlanoTreino = async (id) => {
+  try {
+    const response = await api.delete(`/planos-treino/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao deletar plano de treino:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+
 export default {
   loginUsuario,
   registrarUsuario,
@@ -326,5 +492,19 @@ export default {
   obterRefeicoesDiarias,
   obterResumoDiario,
   atualizarRefeicao,
+  enviarSolicitacaoPersonal,
+  obterSolicitacoesPersonal,
+  aceitarSolicitacao,
+  recusarSolicitacao,
+  enviarPlanoTreino,
+  obterExercicios,
+  obterExercicioPorId,
+  obterPlanosTreino,
+  obterTreinoDoDia,
+  criarPlanoTreino,
+  atualizarPlanoTreino,
+  deletarPlanoTreino,
+  obterExerciciosPorTipo,
+  obterTiposExercicios,
 };
 
