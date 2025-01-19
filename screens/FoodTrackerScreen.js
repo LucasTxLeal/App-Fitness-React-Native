@@ -29,6 +29,23 @@ const MEAL_TYPES = {
   SNACKS: 4,
 };
 
+const dayTranslations = {
+  'Sun': 'Dom',
+  'Mon': 'Seg',
+  'Tue': 'Ter',
+  'Wed': 'Qua',
+  'Thu': 'Qui',
+  'Fri': 'Sex',
+  'Sat': 'Sáb',
+  'Sunday': 'Domingo',
+  'Monday': 'Segunda',
+  'Tuesday': 'Terça',
+  'Wednesday': 'Quarta',
+  'Thursday': 'Quinta',
+  'Friday': 'Sexta',
+  'Saturday': 'Sábado'
+};
+
 const FoodTrackerScreen = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -241,13 +258,18 @@ const FoodTrackerScreen = ({ navigation }) => {
     );
   };
 
+  const formatDate = (date) => {
+    const parts = date.toDateString().split(' ');
+    return parts.map(part => dayTranslations[part] || part).join(' ');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <TouchableOpacity 
         style={styles.datePickerButton} 
         onPress={() => setShowDatePicker(true)}
       >
-        <Text style={styles.dateText}>{selectedDate.toDateString()}</Text>
+        <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
         <Icon name="calendar" size={24} color="#35AAFF" />
       </TouchableOpacity>
 

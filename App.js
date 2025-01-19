@@ -54,7 +54,7 @@ const MainTabs = () => {
       }}
     >
       <Tab.Screen
-        name="Dashboard"
+        name="Painel"
         component={HomeScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
@@ -72,7 +72,7 @@ const MainTabs = () => {
         }}
       />
       <Tab.Screen
-        name="Progress"
+        name="Progresso"
         component={ProgressScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
@@ -106,7 +106,7 @@ const ExerciseStack = () => {
       screenOptions={{
         headerShown: true,
         header: ({ navigation, route, options }) => {
-          const isDetail = route.name === 'ExerciseDetail';
+          const isDetail = route.name === 'Detalhes do exercício';
           return (
             <View style={[styles.header, { paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }]}>
               <TouchableOpacity 
@@ -126,9 +126,9 @@ const ExerciseStack = () => {
         }
       }}
     >
-      <Stack.Screen name="ExerciseList" component={ExerciseScreen} />
+      <Stack.Screen name="Lista de exercícios" component={ExerciseScreen} />
       <Stack.Screen 
-        name="ExerciseDetail" 
+        name="Detalhes dos exercícios" 
         component={ExerciseDetailScreen}
         options={{
           headerShown: true,
@@ -197,7 +197,7 @@ const MainDrawer = () => {
         }}
       />
       <Drawer.Screen
-        name="Exercicios"
+        name="Exercício"
         component={ExerciseStack}
         options={{
           title: 'Exercícios',
@@ -221,7 +221,7 @@ const MainDrawer = () => {
         name="FoodTrackerStack"
         component={FoodStack}
         options={{
-          title: 'Food Tracker',
+          title: 'Rastreador de alimentos',
           drawerIcon: ({ color, size }) => (
             <Icon name="clipboard" color={color} size={size} />
           ),
@@ -231,7 +231,7 @@ const MainDrawer = () => {
         name="Training"
         component={TrainingStack}
         options={{
-          title: 'Training Plan',
+          title: 'Plano de treino',
           drawerIcon: ({ color, size }) => (
             <Icon name="calendar" color={color} size={size} />
           ),

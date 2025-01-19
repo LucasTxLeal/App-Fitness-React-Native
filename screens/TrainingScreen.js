@@ -70,7 +70,7 @@ const TrainingScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Training Plan</Text>
+        <Text style={styles.title}>Plano de treino</Text>
         <TouchableOpacity
           style={styles.addButton}
           onPress={handleCreateWorkoutPlan}
