@@ -14,6 +14,23 @@ import { Feather as Icon } from '@expo/vector-icons';
 import { registrarUsuario } from '../services/api';
 import { format } from 'date-fns';
 
+const dayTranslations = {
+  'Sun': 'Dom',
+  'Mon': 'Seg',
+  'Tue': 'Ter',
+  'Wed': 'Qua',
+  'Thu': 'Qui',
+  'Fri': 'Sex',
+  'Sat': 'Sáb',
+  'Sunday': 'Domingo',
+  'Monday': 'Segunda',
+  'Tuesday': 'Terça',
+  'Wednesday': 'Quarta',
+  'Thursday': 'Quinta',
+  'Friday': 'Sexta',
+  'Saturday': 'Sábado'
+};
+
 const RegisterUserScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
     nome: '',
@@ -91,6 +108,11 @@ const RegisterUserScreen = ({ navigation }) => {
     }
   };
 
+  const formatDate = (date) => {
+    const parts = date.toDateString().split(' ');
+    return parts.map(part => dayTranslations[part] || part).join(' ');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -134,14 +156,13 @@ const RegisterUserScreen = ({ navigation }) => {
         </View>
         {errors.senha && <Text style={styles.errorText}>{errors.senha}</Text>}
 
-
         <TouchableOpacity
           style={styles.datePickerButton}
           onPress={() => setShowDatePicker(true)}
         >
           <Icon name="calendar" size={20} color="#666" style={styles.inputIcon} />
           <Text style={styles.datePickerButtonText}>
-            {formData.datadenascimento.toDateString()}
+            {formatDate(formData.datadenascimento)}
           </Text>
         </TouchableOpacity>
 

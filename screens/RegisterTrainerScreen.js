@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Platform,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,17 +14,35 @@ import { Feather as Icon } from '@expo/vector-icons';
 import { registrarPersonal } from '../services/api';
 import { format } from 'date-fns';
 
+const dayTranslations = {
+  'Sun': 'Dom',
+  'Mon': 'Seg',
+  'Tue': 'Ter',
+  'Wed': 'Qua',
+  'Thu': 'Qui',
+  'Fri': 'Sex',
+  'Sat': 'Sáb',
+  'Sunday': 'Domingo',
+  'Monday': 'Segunda',
+  'Tuesday': 'Terça',
+  'Wednesday': 'Quarta',
+  'Thursday': 'Quinta',
+  'Friday': 'Sexta',
+  'Saturday': 'Sábado'
+};
+
 const RegisterTrainerScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
     senha: '',
-    especialidade: '',
+    datadenascimento: new Date(),
     peso: '',
     altura: '',
-    datadenascimento: new Date(),
+    especialidade: '',
     certificado: '',
   });
+  const [errors, setErrors] = useState({});
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleInputChange = (name, value) => {
@@ -33,6 +50,9 @@ const RegisterTrainerScreen = ({ navigation }) => {
       ...prevState,
       [name]: value,
     }));
+    if (errors[name]) {
+      setErrors(prevErrors => ({ ...prevErrors, [name]: null }));
+    }
   };
 
   const handleDateChange = (event, selectedDate) => {
@@ -42,35 +62,65 @@ const RegisterTrainerScreen = ({ navigation }) => {
     }
   };
 
-  const handleCertificadoChange = (text) => {
-    handleInputChange('certificado', text);
+  const handlePesoChange = (text) => {
+    const numericValue = text.replace(/[^0-9]/g, '');
+    handleInputChange('peso', numericValue);
   };
 
-  const handleRegister = async () => {
-    try {
-      const formattedData = {
-        ...formData,
-        datadenascimento: format(formData.datadenascimento, 'yyyy-MM-dd'),
-        peso: parseFloat(formData.peso),
-        altura: parseFloat(formData.altura)
-      };
-      console.log('Dados formatados para envio:', formattedData);
-      const response = await registrarPersonal(formattedData);
-      console.log('Registro de personal bem-sucedido:', response);
-      Alert.alert('Sucesso', 'Registro de personal realizado com sucesso!', [
-        { text: 'OK', onPress: () => navigation.navigate('Main') }
-      ]);
-    } catch (error) {
-      console.error('Erro no registro de personal:', error);
-      Alert.alert('Erro', error.message || 'Ocorreu um erro durante o registro de personal.');
+  const handleAlturaChange = (text) => {
+    const numericValue = text.replace(/[^0-9]/g, '');
+    handleInputChange('altura', numericValue);
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.nome) newErrors.nome = 'Nome é obrigatório';
+    if (!formData.email) newErrors.email = 'Email é obrigatório';
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email é inválido';
+    if (!formData.senha) newErrors.senha = 'Senha é obrigatória';
+    else if (formData.senha.length < 6) newErrors.senha = 'A senha deve ter pelo menos 6 caracteres';
+    if (!formData.peso) newErrors.peso = 'Peso é obrigatório';
+    if (!formData.altura) newErrors.altura = 'Altura é obrigatória';
+    if (!formData.especialidade) newErrors.especialidade = 'Especialidade é obrigatória';
+    if (!formData.certificado) newErrors.certificado = 'Número do certificado é obrigatório';
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (validateForm()) {
+      try {
+        const formattedData = {
+          ...formData,
+          datadenascimento: format(formData.datadenascimento, 'yyyy-MM-dd'),
+          peso: parseFloat(formData.peso),
+          altura: parseFloat(formData.altura)
+        };
+        console.log('Dados formatados para envio:', formattedData);
+        const response = await registrarPersonal(formattedData);
+        console.log('Registro bem-sucedido:', response);
+        Alert.alert('Sucesso', 'Personal Trainer registrado com sucesso!', [
+          { text: 'OK', onPress: () => navigation.navigate('Main') }
+        ]);
+      } catch (error) {
+        console.error('Erro no registro:', error);
+        Alert.alert('Erro', error.message || 'Ocorreu um erro durante o registro.');
+      }
     }
+  };
+
+  const formatDate = (date) => {
+    const parts = date.toDateString().split(' ');
+    return parts.map(part => dayTranslations[part] || part).join(' ');
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Registrar como Personal Trainer</Text>
-        
+        <Text style={styles.title}>Registro de Personal Trainer</Text>
+
         <View style={styles.inputContainer}>
           <Icon name="user" size={20} color="#666" style={styles.inputIcon} />
           <TextInput
@@ -81,6 +131,7 @@ const RegisterTrainerScreen = ({ navigation }) => {
             onChangeText={(text) => handleInputChange('nome', text)}
           />
         </View>
+        {errors.nome && <Text style={styles.errorText}>{errors.nome}</Text>}
 
         <View style={styles.inputContainer}>
           <Icon name="mail" size={20} color="#666" style={styles.inputIcon} />
@@ -93,6 +144,7 @@ const RegisterTrainerScreen = ({ navigation }) => {
             onChangeText={(text) => handleInputChange('email', text)}
           />
         </View>
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
         <View style={styles.inputContainer}>
           <Icon name="lock" size={20} color="#666" style={styles.inputIcon} />
@@ -105,42 +157,7 @@ const RegisterTrainerScreen = ({ navigation }) => {
             onChangeText={(text) => handleInputChange('senha', text)}
           />
         </View>
-
-
-        <View style={styles.inputContainer}>
-          <Icon name="award" size={20} color="#666" style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Especialização"
-            placeholderTextColor="#666"
-            value={formData.especialidade}
-            onChangeText={(text) => handleInputChange('especialidade', text)}
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Icon name="tag" size={20} color="#666" style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Peso (kg)"
-            placeholderTextColor="#666"
-            keyboardType="numeric"
-            value={formData.peso}
-            onChangeText={(text) => handleInputChange('peso', text)}
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Icon name="arrow-up" size={20} color="#666" style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Altura (cm)"
-            placeholderTextColor="#666"
-            keyboardType="numeric"
-            value={formData.altura}
-            onChangeText={(text) => handleInputChange('altura', text)}
-          />
-        </View>
+        {errors.senha && <Text style={styles.errorText}>{errors.senha}</Text>}
 
         <TouchableOpacity
           style={styles.datePickerButton}
@@ -148,7 +165,7 @@ const RegisterTrainerScreen = ({ navigation }) => {
         >
           <Icon name="calendar" size={20} color="#666" style={styles.inputIcon} />
           <Text style={styles.datePickerButtonText}>
-            {formData.datadenascimento.toDateString()}
+            {formatDate(formData.datadenascimento)}
           </Text>
         </TouchableOpacity>
 
@@ -162,28 +179,64 @@ const RegisterTrainerScreen = ({ navigation }) => {
         )}
 
         <View style={styles.inputContainer}>
+          <Icon name="tag" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Peso (kg)"
+            placeholderTextColor="#666"
+            keyboardType="numeric"
+            value={formData.peso}
+            onChangeText={handlePesoChange}
+          />
+        </View>
+        {errors.peso && <Text style={styles.errorText}>{errors.peso}</Text>}
+
+        <View style={styles.inputContainer}>
+          <Icon name="arrow-up" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Altura (cm)"
+            placeholderTextColor="#666"
+            keyboardType="numeric"
+            value={formData.altura}
+            onChangeText={handleAlturaChange}
+          />
+        </View>
+        {errors.altura && <Text style={styles.errorText}>{errors.altura}</Text>}
+
+        <View style={styles.inputContainer}>
           <Icon name="award" size={20} color="#666" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Certificados"
+            placeholder="Especialidade"
             placeholderTextColor="#666"
-            value={formData.certificado}
-            onChangeText={handleCertificadoChange}
-            multiline
+            value={formData.especialidade}
+            onChangeText={(text) => handleInputChange('especialidade', text)}
           />
         </View>
+        {errors.especialidade && <Text style={styles.errorText}>{errors.especialidade}</Text>}
 
-        <TouchableOpacity style={styles.button} onPress={handleRegister}>
-          <Text style={styles.buttonText}>Registrar como Personal Trainer</Text>
+        <View style={styles.inputContainer}>
+          <Icon name="file-text" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Número do Certificado"
+            placeholderTextColor="#666"
+            value={formData.certificado}
+            onChangeText={(text) => handleInputChange('certificado', text)}
+          />
+        </View>
+        {errors.certificado && <Text style={styles.errorText}>{errors.certificado}</Text>}
+
+        <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+          <Text style={styles.buttonText}>Registrar</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.loginLink}
-          onPress={() => navigation.navigate('Login')}
+        <TouchableOpacity 
+          style={styles.linkButton}
+          onPress={() => navigation.navigate('RegisterUser')}
         >
-          <Text style={styles.loginLinkText}>
-            Já tem uma conta? Faça login
-          </Text>
+          <Text style={styles.linkText}>Registrar como Usuário</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -200,11 +253,11 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 20,
+    color: '#FFF',
     textAlign: 'center',
+    marginBottom: 30,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -219,7 +272,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    color: '#fff',
+    color: '#FFF',
     paddingVertical: 12,
     fontSize: 16,
   },
@@ -233,28 +286,36 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   datePickerButtonText: {
-    color: '#fff',
+    color: '#FFF',
     fontSize: 16,
   },
   button: {
     backgroundColor: '#35AAFF',
     borderRadius: 8,
-    paddingVertical: 14,
+    padding: 15,
     alignItems: 'center',
     marginTop: 20,
   },
   buttonText: {
-    color: '#fff',
+    color: '#FFF',
     fontSize: 18,
     fontWeight: 'bold',
   },
-  loginLink: {
-    marginTop: 20,
+  linkButton: {
+    padding: 10,
     alignItems: 'center',
+    marginTop: 10,
   },
-  loginLinkText: {
+  linkText: {
     color: '#35AAFF',
     fontSize: 16,
+  },
+  errorText: {
+    color: '#FF375B',
+    fontSize: 14,
+    marginTop: -10,
+    marginBottom: 10,
+    marginLeft: 5,
   },
 });
 
