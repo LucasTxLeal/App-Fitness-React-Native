@@ -14,12 +14,12 @@ import { obterPlanosTreino, obterTreinoDoDia, obterExerciciosPorPlanoId } from '
 import { useAuth } from '../contexts/AuthContext';
 
 const DAYS = [
-  { id: 1, short: 'S', name: 'Domingo' },
-  { id: 2, short: 'M', name: 'Segunda' },
+  { id: 1, short: 'D', name: 'Domingo' },
+  { id: 2, short: 'S', name: 'Segunda' },
   { id: 3, short: 'T', name: 'Terça' },
-  { id: 4, short: 'W', name: 'Quarta' },
-  { id: 5, short: 'T', name: 'Quinta' },
-  { id: 6, short: 'F', name: 'Sexta' },
+  { id: 4, short: 'Q', name: 'Quarta' },
+  { id: 5, short: 'Q', name: 'Quinta' },
+  { id: 6, short: 'S', name: 'Sexta' },
   { id: 7, short: 'S', name: 'Sábado' },
 ];
 

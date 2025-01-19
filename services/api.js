@@ -507,6 +507,20 @@ export const criarNovoPlanoTreino = async (dadosPlano) => {
   }
 };
 
+export const obterExerciciosPorPlanoId = async (planoId) => {
+  try {
+    const response = await api.get(`/planos/exercicios-do-plano/${planoId}`);
+    console.log('Exercícios do plano:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao obter exercícios do plano:', error);
+    if (error.response?.status === 404) {
+      return [];
+    }
+    throw error;
+  }
+};
+
 export default {
   loginUsuario,
   registrarUsuario,
@@ -541,6 +555,7 @@ export default {
   deletarPlanoTreino,
   obterExerciciosPorTipo,
   obterTiposExercicios,
-  criarNovoPlanoTreino
+  criarNovoPlanoTreino,
+  obterExerciciosPorPlanoId
 };
 
