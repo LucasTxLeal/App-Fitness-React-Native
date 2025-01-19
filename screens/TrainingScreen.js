@@ -6,51 +6,65 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather as Icon } from '@expo/vector-icons';
-import { obterPlanosTreino, obterTreinoDoDia } from '../services/api';
+import { obterPlanosTreino, obterTreinoDoDia, obterExerciciosPorPlanoId } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
-const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAYS = [
+  { id: 1, short: 'S', name: 'Domingo' },
+  { id: 2, short: 'M', name: 'Segunda' },
+  { id: 3, short: 'T', name: 'Terça' },
+  { id: 4, short: 'W', name: 'Quarta' },
+  { id: 5, short: 'T', name: 'Quinta' },
+  { id: 6, short: 'F', name: 'Sexta' },
+  { id: 7, short: 'S', name: 'Sábado' },
+];
 
 const TrainingScreen = ({ navigation }) => {
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [workoutPlan, setWorkoutPlan] = useState(null);
+  const [selectedDay, setSelectedDay] = useState(new Date().getDay() + 1);
+  const [workoutPlans, setWorkoutPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { userId } = useAuth();
 
   useEffect(() => {
-    loadWorkoutPlan();
-  }, [selectedDate]);
+    loadWorkoutPlans();
+  }, [selectedDay]);
 
-  const loadWorkoutPlan = async () => {
+  const loadWorkoutPlans = async () => {
     try {
       setLoading(true);
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      const data = await obterTreinoDoDia(dateStr);
-      setWorkoutPlan(data);
+      const response = await obterTreinoDoDia(selectedDay);
+      console.log('Planos de treino recebidos:', response);
+      setWorkoutPlans(Array.isArray(response) ? response : []);
     } catch (error) {
-      console.error('Erro ao carregar plano de treino:', error);
+      console.error('Erro ao carregar planos de treino:', error);
+      Alert.alert('Erro', 'Não foi possível carregar os planos de treino');
+      setWorkoutPlans([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const renderDayButton = (day, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() - date.getDay() + index);
-    const isSelected = selectedDate.toDateString() === date.toDateString();
+  const handleCreateWorkoutPlan = () => {
+    if (userId) {
+      navigation.navigate('CreateWorkoutPlan', { contaId: userId });
+    } else {
+      console.error('ID do usuário não encontrado');
+      Alert.alert('Erro', 'Não foi possível criar o plano de treino. Por favor, faça login novamente.');
+    }
+  };
 
-    return (
-      <TouchableOpacity
-        key={index}
-        style={[styles.dayButton, isSelected && styles.selectedDay]}
-        onPress={() => setSelectedDate(date)}
-      >
-        <Text style={[styles.dayText, isSelected && styles.selectedDayText]}>
-          {day}
-        </Text>
-      </TouchableOpacity>
-    );
+  const handlePlanPress = (plan) => {
+    navigation.navigate('WorkoutPlanDetail', { 
+      planId: plan.id,
+      planName: plan.nome,
+      creatorName: plan.criador?.nome,
+      dayName: plan.diaSemana?.nome,
+      creationDate: plan.dataCriacao
+    });
   };
 
   return (
@@ -59,49 +73,59 @@ const TrainingScreen = ({ navigation }) => {
         <Text style={styles.title}>Training Plan</Text>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => navigation.navigate('CreateWorkoutPlan')}
+          onPress={handleCreateWorkoutPlan}
         >
           <Icon name="plus" size={24} color="#35AAFF" />
         </TouchableOpacity>
       </View>
 
       <View style={styles.daysContainer}>
-        {DAYS.map((day, index) => renderDayButton(day, index))}
+        {DAYS.map((day) => (
+          <TouchableOpacity
+            key={day.id}
+            style={[styles.dayButton, selectedDay === day.id && styles.selectedDay]}
+            onPress={() => setSelectedDay(day.id)}
+          >
+            <Text style={[styles.dayText, selectedDay === day.id && styles.selectedDayText]}>
+              {day.short}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {loading ? (
         <ActivityIndicator size="large" color="#35AAFF" style={styles.loader} />
       ) : (
         <ScrollView style={styles.content}>
-          {workoutPlan?.grupos?.map((grupo, index) => (
-            <View key={index} style={styles.workoutGroup}>
-              <Text style={styles.groupTitle}>{grupo.nome}</Text>
-              {grupo.exercicios.map((exercicio, exercicioIndex) => (
-                <TouchableOpacity
-                  key={exercicioIndex}
-                  style={styles.exerciseItem}
-                  onPress={() => navigation.navigate('ExerciseDetail', { exerciseId: exercicio.id })}
-                >
-                  <View>
-                    <Text style={styles.exerciseName}>{exercicio.nome}</Text>
-                    <Text style={styles.exerciseDetails}>
-                      {exercicio.series}x{exercicio.repeticoes} • {exercicio.peso}kg
-                    </Text>
-                  </View>
-                  <Icon name="info" size={24} color="#35AAFF" />
-                </TouchableOpacity>
-              ))}
-            </View>
-          ))}
-
-          {!workoutPlan?.grupos?.length && (
+          {workoutPlans.length > 0 ? (
+            workoutPlans.map((plan, index) => (
+              <TouchableOpacity
+                key={plan.id || index}
+                style={styles.planCard}
+                onPress={() => handlePlanPress(plan)}
+              >
+                <View style={styles.planHeader}>
+                  <Text style={styles.planName}>{plan.nome}</Text>
+                  <Text style={styles.planCreator}>
+                    por {plan.criador?.nome || 'Desconhecido'}
+                  </Text>
+                </View>
+                <View style={styles.planInfo}>
+                  <Text style={styles.planDay}>
+                    {plan.diaSemana?.nome || DAYS.find(d => d.id === selectedDay)?.name}
+                  </Text>
+                  <Icon name="chevron-right" size={24} color="#35AAFF" />
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateText}>
-                Nenhum treino programado para este dia
+                Nenhum treino programado para {DAYS.find(d => d.id === selectedDay)?.name}
               </Text>
               <TouchableOpacity
                 style={styles.createButton}
-                onPress={() => navigation.navigate('CreateWorkoutPlan')}
+                onPress={handleCreateWorkoutPlan}
               >
                 <Text style={styles.createButtonText}>Criar Treino</Text>
               </TouchableOpacity>
@@ -167,23 +191,42 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  workoutGroup: {
-    marginBottom: 24,
+  planCard: {
+    backgroundColor: '#333',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
   },
-  groupTitle: {
+  planHeader: {
+    marginBottom: 8,
+  },
+  planName: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 16,
+    marginBottom: 4,
+  },
+  planCreator: {
+    fontSize: 14,
+    color: '#999999',
+  },
+  planInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  planDay: {
+    fontSize: 16,
+    color: '#35AAFF',
   },
   exerciseItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#333',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 8,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#444',
   },
   exerciseName: {
     fontSize: 16,
@@ -210,6 +253,7 @@ const styles = StyleSheet.create({
     color: '#999999',
     fontSize: 16,
     marginBottom: 16,
+    textAlign: 'center',
   },
   createButton: {
     backgroundColor: '#35AAFF',

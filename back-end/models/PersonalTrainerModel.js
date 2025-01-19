@@ -4,7 +4,7 @@ const conta = require('./ContaModel'); // Relacionamento com o modelo de conta
 
 // Definindo o modelo de PersonalTrainer
 const PersonalTrainer = db.define('PersonalTrainer', {
-  contaid: {  
+  contaid: {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
@@ -41,6 +41,8 @@ PersonalTrainer.createPersonalTrainer = async function(contaId, especialidade, c
     throw new Error('Erro ao criar personal trainer');
   }
 };
+
+PersonalTrainer.belongsTo(conta, { foreignKey: 'contaid', as: 'conta' })
 
 
 module.exports = PersonalTrainer;

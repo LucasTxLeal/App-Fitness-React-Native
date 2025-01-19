@@ -9,7 +9,7 @@ const Videos = require('../models/VideosModel');
 const { Op } = require('sequelize');
 
 const RegistrarPlanoDeTreino = async (req, res) => {
-  const transaction = await PlanosDeTreino.sequelize.transaction(); // Inicia a transação
+  const transaction = await PlanosDeTreino.sequelize.transaction();
 
   try {
     const { contaId, nomePlano, diaSemanaId, tiposDeTreino } = req.body;
@@ -19,34 +19,27 @@ const RegistrarPlanoDeTreino = async (req, res) => {
       return res.status(400).json({ message: 'Todos os campos são obrigatórios.' });
     }
 
-    // Verifica se o usuário autenticado tem permissão para criar um plano para o contaId informado
-    const userId = req.user?.id; // ID do usuário autenticado
+    const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ message: 'Usuário não autenticado ou inválido.' });
     }
 
-    // Validação adicional pode ser feita aqui, se necessário, para verificar permissões
+    // Valida se já existe um plano com o mesmo nome
+    const [planoExistente, diaSemana] = await Promise.all([
+      PlanosDeTreino.findOne({ where: { nome: nomePlano, contaId } }),
+      DiasDaSemana.findByPk(diaSemanaId),
+    ]);
 
-    // Verifica se já existe um plano com o mesmo nome para o contaId fornecido
-    const planoExistente = await PlanosDeTreino.findOne({ where: { nome: nomePlano, contaId } });
     if (planoExistente) {
       return res.status(400).json({ message: 'Já existe um plano de treino com esse nome.' });
     }
-
-    // Valida o dia da semana
-    const diaSemana = await DiasDaSemana.findByPk(diaSemanaId);
     if (!diaSemana) {
       return res.status(400).json({ message: 'Dia da semana inválido.' });
     }
 
     // Cria o plano de treino
     const planoDeTreino = await PlanosDeTreino.create(
-      {
-        nome: nomePlano,
-        contaId, // Utiliza o contaId fornecido no corpo da requisição
-        criadoPorId: userId,
-        diaSemanaId,
-      },
+      { nome: nomePlano, contaId, criadoPorId: userId, diaSemanaId },
       { transaction }
     );
 
@@ -54,73 +47,47 @@ const RegistrarPlanoDeTreino = async (req, res) => {
       throw new Error('Falha ao criar o plano de treino.');
     }
 
-    // Processa cada tipo de treino e seus exercícios
-    for (const tipoDeTreino of tiposDeTreino) {
-      const { tipo_id, exercicios } = tipoDeTreino;
-
-      // Valida o tipo de treino
+    // Processa tipos de treino e exercícios
+    const tiposDeTreinoPromises = tiposDeTreino.map(async ({ tipo_id, exercicios }) => {
       const tipoTreino = await TipoDeTreinos.findByPk(tipo_id);
       if (!tipoTreino) {
         throw new Error(`Tipo de treino com ID ${tipo_id} não encontrado.`);
       }
 
-      // Cria a associação entre o plano e o tipo de treino
-      await TiposDeTreinoNoPlano.create({
-        planoId: planoDeTreino.id,
-        tipoDeTreinoId: tipo_id,
-      }, { transaction });
+      // Cria associação entre plano e tipo de treino
+      await TiposDeTreinoNoPlano.create(
+        { planoId: planoDeTreino.id, tipoDeTreinoId: tipo_id },
+        { transaction }
+      );
 
-      // Valida e associa os exercícios ao plano
-      for (const exercicio of exercicios) {
-        const { exercicio_id, duracao } = exercicio;
-
-        // Valida o exercício
+      // Valida e associa os exercícios
+      const exercicioPromises = exercicios.map(async ({ exercicio_id, duracao }) => {
         const exercicioExistente = await Exercicios.findByPk(exercicio_id);
         if (!exercicioExistente) {
           throw new Error(`Exercício com ID ${exercicio_id} não encontrado.`);
         }
 
-        // Cria a relação do exercício com o plano
-        await ExerciciosNoPlano.create({
-          plano_id: planoDeTreino.id,
-          exercicio_id,
-          duracao,
-        }, { transaction });
-      }
-    }
+        return ExerciciosNoPlano.create(
+          { plano_id: planoDeTreino.id, exercicio_id, duracao },
+          { transaction }
+        );
+      });
 
-    
-    // Consulta os tipos de treino e exercícios associados ao plano
-    const tiposDeTreinoComExercicios = await Promise.all(
-      tiposDeTreino.map(async (tipoDeTreino) => {
-        const { tipo_id } = tipoDeTreino;
+      await Promise.all(exercicioPromises);
 
-        // Recupera os detalhes do tipo de treino
-        const tipoTreino = await TipoDeTreinos.findByPk(tipo_id, {
-          attributes: ['id', 'nome'],
-        });
+      // Retorna os detalhes do tipo de treino e exercícios associados
+      const exerciciosDetalhes = await ExerciciosNoPlano.findAll({
+        where: { plano_id: planoDeTreino.id },
+        include: [{ model: Exercicios, as: 'exercicio', attributes: ['id', 'nome', 'descricao', 'musculoAlvo'] }],
+        attributes: ['duracao'],
+      });
 
-        // Recupera os exercícios associados
-        const exercicios = await ExerciciosNoPlano.findAll({
-          where: { planoid: planoDeTreino.id }, // Ajuste "planoid" ao nome real do campo no banco
-          include: [
-            {
-              model: Exercicios,
-              as: 'exercicio', // Usando o alias definido na associação
-              attributes: ['id', 'nome', 'descricao', 'musculoAlvo'], // Os campos desejados
-            },
-          ],
-          attributes: ['duracao'], // Outros atributos da tabela ExerciciosNoPlano
-        });
+      return { tipoTreino: { id: tipoTreino.id, nome: tipoTreino.nome }, exercicios: exerciciosDetalhes };
+    });
 
-        return {
-          tipoTreino,
-          exercicios,
-        };
-      })
-    );
+    const tiposDeTreinoComExercicios = await Promise.all(tiposDeTreinoPromises);
 
-    // Se tudo ocorreu bem, comita a transação
+    // Commit da transação
     await transaction.commit();
 
     return res.status(201).json({
@@ -135,13 +102,12 @@ const RegistrarPlanoDeTreino = async (req, res) => {
       },
     });
   } catch (error) {
-    // Em caso de erro, faz o rollback da transação
     if (transaction) await transaction.rollback();
-
     console.error('Erro ao registrar plano de treino:', error);
     return res.status(500).json({ message: 'Erro ao registrar plano de treino', error: error.message });
   }
 };
+
 
 
 //////////////////////////////////////////////////////////
@@ -322,11 +288,6 @@ const getVideoPorExercicio = async (req, res) => {
     res.status(500).json({ error: 'Erro ao buscar vídeo por exercício.' });
   }
 };
-
-
-
-
-
 
 
 module.exports = 

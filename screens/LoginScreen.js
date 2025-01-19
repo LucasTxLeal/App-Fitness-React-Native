@@ -1,36 +1,34 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert } from 'react-native';
 import { loginUsuario } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const { updateUserId } = useAuth();
 
   const handleLogin = async () => {
     try {
-      console.log('Tentando fazer login com:', email);
       const response = await loginUsuario(email, senha);
       console.log('Resposta do login:', response);
       
-      if (response && response.token) {
+      if (response.token && response.user) {
         await AsyncStorage.setItem('userToken', response.token);
-        console.log('Token armazenado com sucesso');
+        await updateUserId(response.user.id.toString());
         navigation.navigate('Main');
-        console.log('Navegação para Main chamada');
       } else {
-        console.error('Resposta de login inválida:', response);
-        Alert.alert('Erro de Login', 'Resposta de login inválida. Por favor, tente novamente.');
+        Alert.alert('Erro', 'Falha no login. Verifique suas credenciais.');
       }
     } catch (error) {
-      console.error('Erro detalhado no login:', error);
-      Alert.alert('Falha no Login', error.message || 'Ocorreu um erro durante o login. Por favor, tente novamente.');
+      console.error('Erro no login:', error);
+      Alert.alert('Erro', 'Não foi possível fazer login. Tente novamente.');
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
       <TextInput
         style={styles.input}
@@ -51,9 +49,9 @@ const LoginScreen = ({ navigation }) => {
         <Text style={styles.buttonText}>Entrar</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.navigate('RegisterUser')}>
-        <Text style={styles.linkText}>Não tem uma conta? Registre-se</Text>
+        <Text style={styles.registerText}>Não tem uma conta? Registre-se</Text>
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -61,41 +59,40 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
-    backgroundColor: '#191919',
+    backgroundColor: '#f5f5f5',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 20,
-    textAlign: 'center',
   },
   input: {
-    backgroundColor: '#333',
-    color: '#fff',
-    padding: 10,
+    width: '100%',
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
     borderRadius: 5,
     marginBottom: 10,
+    paddingHorizontal: 10,
   },
   button: {
-    backgroundColor: '#35AAFF',
+    backgroundColor: '#007bff',
     padding: 10,
     borderRadius: 5,
+    width: '100%',
     alignItems: 'center',
-    marginTop: 10,
   },
   buttonText: {
-    color: '#fff',
+    color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  linkText: {
-    color: '#35AAFF',
-    textAlign: 'center',
-    marginTop: 20,
+  registerText: {
+    marginTop: 15,
+    color: '#007bff',
   },
 });
 
 export default LoginScreen;
-

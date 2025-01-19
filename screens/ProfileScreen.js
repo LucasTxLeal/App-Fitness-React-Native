@@ -31,7 +31,6 @@ const ProfileScreen = ({ navigation }) => {
     pesoAtual: '',
     imc: '',
     performance: '',
-    treinosConcluidos: '',
   });
   const [novoDesempenho, setNovoDesempenho] = useState({
     data: new Date().toISOString().split('T')[0],
@@ -91,14 +90,12 @@ const ProfileScreen = ({ navigation }) => {
         ...novoProgresso,
         pesoAtual: parseFloat(novoProgresso.pesoAtual),
         imc: parseFloat(novoProgresso.imc),
-        treinosConcluidos: parseInt(novoProgresso.treinosConcluidos),
       });
       setNovoProgresso({
         data: new Date().toISOString().split('T')[0],
         pesoAtual: '',
         imc: '',
         performance: '',
-        treinosConcluidos: '',
       });
       carregarDados();
     } catch (error) {
@@ -199,14 +196,6 @@ const ProfileScreen = ({ navigation }) => {
               value={novoProgresso.performance}
               onChangeText={(text) => setNovoProgresso({ ...novoProgresso, performance: text })}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Treinos Concluídos"
-              placeholderTextColor="#666"
-              value={novoProgresso.treinosConcluidos}
-              onChangeText={(text) => setNovoProgresso({ ...novoProgresso, treinosConcluidos: text })}
-              keyboardType="numeric"
-            />
             <TouchableOpacity style={styles.addButton} onPress={adicionarProgresso}>
               <Text style={styles.addButtonText}>Adicionar Progresso</Text>
             </TouchableOpacity>
@@ -253,7 +242,6 @@ const ProfileScreen = ({ navigation }) => {
               <Text style={styles.logText}>Peso: {log.PesoAtual} kg</Text>
               <Text style={styles.logText}>IMC: {log.IMC}</Text>
               <Text style={styles.logText}>Performance: {log.Performance}</Text>
-              <Text style={styles.logText}>Treinos Concluídos: {log.TreinosConcluidos}</Text>
               <TouchableOpacity
                 style={styles.deleteButton}
                 onPress={() => excluirProgresso(log.id)}

@@ -4,7 +4,7 @@ const PlanosDeTreino = require('./PlanosDeTreinoModel');
 const Exercicios = require('./ExerciciosModel');
 
 const ExerciciosNoPlano = db.define('ExerciciosNoPlano', {
-  
+
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,

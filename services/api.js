@@ -2,6 +2,22 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
+const refreshToken = async () => {
+  try {
+    const refreshToken = await AsyncStorage.getItem('refreshToken');
+    if (refreshToken) {
+      const response = await api.post('/auth/refresh-token', { refreshToken });
+      if (response.data && response.data.token) {
+        await AsyncStorage.setItem('userToken', response.data.token);
+        return response.data.token;
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao renovar token:', error);
+  }
+  return null;
+};
+
 const API_URL = 'http://192.168.0.215:3000/api'; // Adjust this URL if needed
 console.log('URL da API:', API_URL);
 
@@ -53,11 +69,21 @@ api.interceptors.response.use(
       data: error.response?.data,
     });
 
+    if (error.response?.status === 401) {
+      const newToken = await refreshToken();
+      if (newToken) {
+        error.config.headers['Authorization'] = `Bearer ${newToken}`;
+        return api.request(error.config);
+      }
+    }
+
     if (error.response?.status === 403 || error.response?.status === 401) {
       try {
         await AsyncStorage.removeItem('userToken');
+        await AsyncStorage.removeItem('refreshToken');
+        // Aqui você pode adicionar lógica para redirecionar o usuário para a tela de login
       } catch (e) {
-        console.error('Erro ao remover token:', e);
+        console.error('Erro ao remover tokens:', e);
       }
     }
 
@@ -83,6 +109,12 @@ const withRetry = async (fn, retries = 3, delay = 1000) => {
 export const loginUsuario = async (email, senha) => {
   try {
     const response = await api.post('/auth/login', { email, senha });
+    if (response.data.token) {
+      await AsyncStorage.setItem('userToken', response.data.token);
+    }
+    if (response.data.refreshToken) {
+      await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+    }
     return response.data;
   } catch (error) {
     console.error('Erro no login:', error.response?.data || error.message);
@@ -371,20 +403,10 @@ export const obterExercicios = async () => {
 
 export const obterTiposExercicios = async () => {
   try {
-    // Retorna os tipos de exercícios do banco
-    const tipos = [
-      { id: 1, nome: 'Peito' },
-      { id: 2, nome: 'Biceps' },
-      { id: 3, nome: 'Costas' },
-      { id: 4, nome: 'Cardio' },
-      { id: 5, nome: 'Pernas' },
-      { id: 6, nome: 'Ombros' },
-      { id: 7, nome: 'Triceps' },
-      { id: 8, nome: 'Abdômen' }
-    ];
-    return tipos;
+    const response = await api.get('/planos/tipos');
+    return response.data;
   } catch (error) {
-    console.error('Erro ao obter tipos de exercícios:', error.response?.data || error.message);
+    console.error('Erro ao obter tipos de exercícios:', error);
     throw error;
   }
 };
@@ -392,18 +414,16 @@ export const obterTiposExercicios = async () => {
 export const obterExerciciosPorTipo = async (tipoId) => {
   try {
     if (!tipoId) {
-      const response = await obterExercicios();
-      return response;
+      console.log('Tipo de exercício não selecionado');
+      return [];
     }
-    
-    // Atualizando o endpoint para a rota correta
     const response = await api.get(`/planos/exercicios/${tipoId}`);
     console.log('Exercícios por tipo:', response.data);
-    return { exercicios: response.data };
+    return response.data;
   } catch (error) {
     console.error('Erro ao obter exercícios por tipo:', error);
     if (error.response?.status === 404) {
-      return { exercicios: [] };
+      return [];
     }
     throw error;
   }
@@ -431,11 +451,15 @@ export const obterPlanosTreino = async () => {
   }
 };
 
-export const obterTreinoDoDia = async (data) => {
+export const obterTreinoDoDia = async (diaSemanaId) => {
   try {
-    const response = await api.get(`/planos-treino/dia/${data}`);
+    const response = await api.get(`/planos/planos-do-dia/${diaSemanaId}`);
     return response.data;
   } catch (error) {
+    if (error.response && error.response.status === 404) {
+      // Return an empty array if no plan is found for the day
+      return [];
+    }
     console.error('Erro ao obter treino do dia:', error.response?.data || error.message);
     throw error;
   }
@@ -471,6 +495,17 @@ export const deletarPlanoTreino = async (id) => {
   }
 };
 
+export const criarNovoPlanoTreino = async (dadosPlano) => {
+  try {
+    console.log('Dados enviados para criar plano:', JSON.stringify(dadosPlano, null, 2));
+    const response = await api.post('/planos/criar-plano', dadosPlano);
+    console.log('Resposta do servidor:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao criar plano de treino:', error.response?.data || error.message);
+    throw error.response?.data || error;
+  }
+};
 
 export default {
   loginUsuario,
@@ -506,5 +541,6 @@ export default {
   deletarPlanoTreino,
   obterExerciciosPorTipo,
   obterTiposExercicios,
+  criarNovoPlanoTreino
 };
 

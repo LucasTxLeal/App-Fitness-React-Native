@@ -6,6 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { Feather as Icon } from '@expo/vector-icons';
 import { View, TouchableOpacity, Text, Platform, StatusBar } from 'react-native';
+import { AuthProvider } from './contexts/AuthContext';
 
 import LoginScreen from './screens/LoginScreen';
 import RegisterUserScreen from './screens/RegisterUserScreen';
@@ -262,19 +263,21 @@ const MainDrawer = () => {
 
 const App = () => {
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="Login"
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="RegisterUser" component={RegisterUserScreen} />
-        <Stack.Screen name="RegisterTrainer" component={RegisterTrainerScreen} />
-        <Stack.Screen name="Main" component={MainDrawer} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <AuthProvider>
+      <NavigationContainer>
+        <Stack.Navigator
+          initialRouteName="Login"
+          screenOptions={{
+            headerShown: false,
+          }}
+        >
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="RegisterUser" component={RegisterUserScreen} />
+          <Stack.Screen name="RegisterTrainer" component={RegisterTrainerScreen} />
+          <Stack.Screen name="Main" component={MainDrawer} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </AuthProvider>
   );
 };
 

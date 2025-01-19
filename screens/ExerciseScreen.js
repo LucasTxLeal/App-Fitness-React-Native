@@ -3,65 +3,56 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather as Icon } from '@expo/vector-icons';
-import { obterExerciciosPorTipo, obterTiposExercicios } from '../services/api';
+import { obterExerciciosPorTipo } from '../services/api';
+
+// Hardcoded exercise types
+const EXERCISE_TYPES = [
+  { id: 1, nome: 'Peito' },
+  { id: 2, nome: 'Bíceps' },
+  { id: 3, nome: 'Costas' },
+  { id: 4, nome: 'Cardio' },
+  { id: 5, nome: 'Perna' },
+  { id: 6, nome: 'Ombros' },
+  { id: 7, nome: 'Tríceps' },
+  { id: 8, nome: 'Abdômen' },
+];
 
 const ExerciseScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState(null);
   const [exercises, setExercises] = useState([]);
-  const [exerciseTypes, setExerciseTypes] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
-  // Carregar tipos de exercícios
   useEffect(() => {
-    const loadExerciseTypes = async () => {
-      try {
-        const response = await obterTiposExercicios();
-        setExerciseTypes(response);
-      } catch (error) {
-        console.error('Erro ao carregar tipos de exercícios:', error);
-        setError('Não foi possível carregar os tipos de exercícios.');
-      }
-    };
-    loadExerciseTypes();
-  }, []);
+    if (selectedType) {
+      loadExercises();
+    }
+  }, [selectedType]);
 
-  // Carregar exercícios quando um tipo é selecionado
   const loadExercises = async () => {
+    if (!selectedType) return;
     try {
       setLoading(true);
-      setError(null);
       const data = await obterExerciciosPorTipo(selectedType);
-      console.log('Exercícios carregados:', data.exercicios);
-      setExercises(data.exercicios || []);
+      setExercises(data || []);
     } catch (error) {
       console.error('Erro ao carregar exercícios:', error);
-      setError('Não foi possível carregar os exercícios. Por favor, tente novamente.');
       setExercises([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadExercises();
-  }, [selectedType]);
-
   const filteredExercises = exercises.filter(exercise =>
     exercise.nome.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const handleTypeSelect = (typeId) => {
-    setSelectedType(prevSelected => prevSelected === typeId ? null : typeId);
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -85,14 +76,14 @@ const ExerciseScreen = ({ navigation }) => {
         showsHorizontalScrollIndicator={false}
         style={styles.typeGroupsContainer}
       >
-        {exerciseTypes.map((type) => (
+        {EXERCISE_TYPES.map((type) => (
           <TouchableOpacity
             key={type.id}
             style={[
               styles.typeButton,
               selectedType === type.id && styles.selectedType,
             ]}
-            onPress={() => handleTypeSelect(type.id)}
+            onPress={() => setSelectedType(type.id)}
           >
             <Text
               style={[
@@ -108,16 +99,6 @@ const ExerciseScreen = ({ navigation }) => {
 
       {loading ? (
         <ActivityIndicator size="large" color="#35AAFF" style={styles.loader} />
-      ) : error ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity 
-            style={styles.retryButton} 
-            onPress={loadExercises}
-          >
-            <Text style={styles.retryButtonText}>Tentar Novamente</Text>
-          </TouchableOpacity>
-        </View>
       ) : (
         <ScrollView style={styles.exerciseList}>
           {filteredExercises.map((exercise) => (
@@ -132,7 +113,7 @@ const ExerciseScreen = ({ navigation }) => {
                   {exercise.descricao}
                 </Text>
                 <Text style={styles.muscleTarget}>
-                  Músculo: {exercise.musculo_alvo}
+                  Músculo: {exercise.musculoAlvo}
                 </Text>
               </View>
               <Icon name="chevron-right" size={24} color="#35AAFF" />
@@ -176,7 +157,9 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    margin: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
     padding: 12,
     backgroundColor: '#333',
     borderRadius: 8,
@@ -189,7 +172,7 @@ const styles = StyleSheet.create({
   },
   typeGroupsContainer: {
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   typeButton: {
     paddingHorizontal: 16,
@@ -197,6 +180,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
     borderRadius: 20,
     marginRight: 8,
+    marginVertical: 8,
   },
   selectedType: {
     backgroundColor: '#35AAFF',
@@ -243,37 +227,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyState: {
-    alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
   emptyStateText: {
     color: '#999',
     fontSize: 16,
     textAlign: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: '#35AAFF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
 

@@ -69,4 +69,6 @@ Conta.createConta = async function (nome, email, senha, tipo, datadenascimento, 
   }
 };
 
+
+
 module.exports = Conta;

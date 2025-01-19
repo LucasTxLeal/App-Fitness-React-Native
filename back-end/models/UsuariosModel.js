@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const db = require('../DB/db');
+const Conta = require('./ContaModel');
 
 const Usuario = db.define('Usuario', {
   contaid: {  // Usando o nome correto da coluna, em minúsculas
@@ -18,7 +19,7 @@ const Usuario = db.define('Usuario', {
     field: 'objetivo', // Nome da coluna no banco de dados
   },
 }, {
-  tableName: 'usuarios',  
+  tableName: 'usuarios',
   timestamps: false,
 });
 
@@ -34,5 +35,7 @@ Usuario.createUsuario = async function (contaId, objetivo) {
     throw new Error('Erro ao criar usuário');
   }
 };
+
+Usuario.belongsTo(Conta, { foreignKey: 'contaid', as: 'conta' });
 
 module.exports = Usuario;
