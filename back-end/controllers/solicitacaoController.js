@@ -39,6 +39,7 @@ const listarPersonalTrainers = async (req, res) => {
 // 2. Função para criar uma solicitação de plano de treino
 const criarSolicitacaoDePlano = async (req, res) => {
   const { personal_id, objetivo, descricao, diasSemana } = req.body;
+  console.log(req.body)
 
   try {
     // Validação dos dias da semana
@@ -106,6 +107,7 @@ const criarSolicitacaoDePlano = async (req, res) => {
 
 const listarSolicitacoesPendentes = async (req, res) => {
   const { id: contaId } = req.user; // ID da conta do personal autenticado (guardado no localStorage)
+  console.log(req.user)
 
   try {
     // Buscar o personal_id baseado no id da conta

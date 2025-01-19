@@ -220,7 +220,7 @@ const RegisterTrainerScreen = ({ navigation }) => {
           <Icon name="file-text" size={20} color="#666" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Número do Certificado"
+            placeholder="Certificados"
             placeholderTextColor="#666"
             value={formData.certificado}
             onChangeText={(text) => handleInputChange('certificado', text)}

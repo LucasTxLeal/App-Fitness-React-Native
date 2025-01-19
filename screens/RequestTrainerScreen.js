@@ -1,285 +1,255 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather as Icon } from '@expo/vector-icons';
-import { enviarSolicitacaoPersonal } from '../services/api';
-
-const AVAILABLE_TIMES = [
-  'Manhã (6h-12h)',
-  'Tarde (12h-18h)',
-  'Noite (18h-22h)',
-];
-
-const DAYS_OF_WEEK = [
-  'Segunda',
-  'Terça',
-  'Quarta',
-  'Quinta',
-  'Sexta',
-  'Sábado',
-  'Domingo',
-];
+import React, { useState, useEffect } from "react"
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { listarPersonalTrainers, criarSolicitacaoDePlano } from "../services/api"
+import { Feather as Icon } from "@expo/vector-icons"
 
 const RequestTrainerScreen = ({ navigation }) => {
-  const [objetivo, setObjetivo] = useState('');
-  const [mensagem, setMensagem] = useState('');
-  const [selectedTimes, setSelectedTimes] = useState([]);
-  const [selectedDays, setSelectedDays] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [personalTrainers, setPersonalTrainers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedTrainer, setSelectedTrainer] = useState(null)
+  const [objetivo, setObjetivo] = useState("")
+  const [descricao, setDescricao] = useState("")
+  const [diasSemana, setDiasSemana] = useState([])
 
-  const toggleTime = (time) => {
-    setSelectedTimes(prev => 
-      prev.includes(time)
-        ? prev.filter(t => t !== time)
-        : [...prev, time]
-    );
-  };
+  useEffect(() => {
+    fetchPersonalTrainers()
+  }, [])
 
-  const toggleDay = (day) => {
-    setSelectedDays(prev =>
-      prev.includes(day)
-        ? prev.filter(d => d !== day)
-        : [...prev, day]
-    );
-  };
+  const fetchPersonalTrainers = async () => {
+    try {
+      const data = await listarPersonalTrainers()
+      console.log("Personal trainers raw data:", JSON.stringify(data, null, 2))
+      if (Array.isArray(data)) {
+        setPersonalTrainers(data)
+      } else if (data && typeof data === "object") {
+        const trainersArray = Object.values(data)
+        if (Array.isArray(trainersArray)) {
+          setPersonalTrainers(trainersArray)
+        } else {
+          console.error("Dados de personal trainers em formato inválido:", data)
+          setPersonalTrainers([])
+        }
+      } else {
+        console.error("Dados de personal trainers em formato inválido:", data)
+        setPersonalTrainers([])
+      }
+    } catch (error) {
+      console.error("Erro ao carregar personal trainers:", error)
+      Alert.alert("Erro", "Não foi possível carregar a lista de personal trainers.")
+      setPersonalTrainers([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleTrainerSelect = (trainer) => {
+    setSelectedTrainer(trainer)
+  }
+
+  const handleDayToggle = (dayId) => {
+    setDiasSemana((prev) => (prev.includes(dayId) ? prev.filter((id) => id !== dayId) : [...prev, dayId]))
+  }
 
   const handleSubmit = async () => {
-    if (!objetivo.trim()) {
-      Alert.alert('Erro', 'Por favor, defina seu objetivo');
-      return;
+    if (!selectedTrainer) {
+      Alert.alert("Erro", "Por favor, selecione um personal trainer.")
+      return
+    }
+    if (objetivo.trim() === "" || descricao.trim() === "") {
+      Alert.alert("Erro", "Por favor, preencha todos os campos.")
+      return
+    }
+    if (diasSemana.length === 0) {
+      Alert.alert("Erro", "Por favor, selecione pelo menos um dia da semana.")
+      return
     }
 
-    if (selectedTimes.length === 0 || selectedDays.length === 0) {
-      Alert.alert('Erro', 'Por favor, selecione horários e dias disponíveis');
-      return;
-    }
-
-    setLoading(true);
     try {
-      await enviarSolicitacaoPersonal({
+      const response = await criarSolicitacaoDePlano({
+        personal_id: selectedTrainer.id,
         objetivo,
-        mensagem: mensagem.trim(),
-        disponibilidade: {
-          horarios: selectedTimes,
-          dias: selectedDays,
-        },
-      });
-
-      Alert.alert(
-        'Sucesso',
-        'Sua solicitação foi enviada com sucesso! Um personal trainer entrará em contato.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+        descricao,
+        diasSemana,
+      })
+      console.log("Resposta da API:", response)
+      Alert.alert("Sucesso", "Solicitação enviada com sucesso!")
+      navigation.goBack()
     } catch (error) {
-      console.error('Erro ao enviar solicitação:', error);
-      Alert.alert(
-        'Erro',
-        'Não foi possível enviar sua solicitação. Por favor, tente novamente.'
-      );
-    } finally {
-      setLoading(false);
+      console.error("Erro detalhado:", error.response || error)
+      Alert.alert("Erro", "Não foi possível enviar a solicitação. Tente novamente.")
     }
-  };
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#35AAFF" />
+      </View>
+    )
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Solicitar Personal Trainer</Text>
-      </View>
+      <Text style={styles.title}>Solicitar Personal Trainer</Text>
 
-      <ScrollView style={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Seu Objetivo</Text>
+      <FlatList
+        data={personalTrainers}
+        keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={[styles.trainerItem, selectedTrainer?.id === item.id && styles.selectedTrainer]}
+            onPress={() => handleTrainerSelect(item)}
+          >
+            <Text style={styles.trainerId}>ID: {item.id || "N/A"}</Text>
+            <Text style={styles.trainerName}>{item.usuario?.nome || "Nome não disponível"}</Text>
+            <Text style={styles.trainerSpecialty}>Especialidade: {item.especialidade || "Não especificada"}</Text>
+            <Text style={styles.trainerDetails}>
+              Peso: {item.usuario?.peso || "N/A"}kg, Altura: {item.usuario?.altura || "N/A"}m
+            </Text>
+          </TouchableOpacity>
+        )}
+        ListEmptyComponent={<Text style={styles.emptyText}>Nenhum personal trainer disponível.</Text>}
+      />
+
+      {selectedTrainer && (
+        <View style={styles.formContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Descreva seu objetivo (ex: ganho de massa, emagrecimento)"
-            placeholderTextColor="#666"
+            placeholder="Objetivo"
             value={objetivo}
             onChangeText={setObjetivo}
-            multiline
-            numberOfLines={3}
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Disponibilidade - Horários</Text>
-          <View style={styles.optionsGrid}>
-            {AVAILABLE_TIMES.map((time) => (
-              <TouchableOpacity
-                key={time}
-                style={[
-                  styles.optionButton,
-                  selectedTimes.includes(time) && styles.optionButtonSelected,
-                ]}
-                onPress={() => toggleTime(time)}
-              >
-                <Text
-                  style={[
-                    styles.optionButtonText,
-                    selectedTimes.includes(time) && styles.optionButtonTextSelected,
-                  ]}
-                >
-                  {time}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Disponibilidade - Dias</Text>
-          <View style={styles.optionsGrid}>
-            {DAYS_OF_WEEK.map((day) => (
-              <TouchableOpacity
-                key={day}
-                style={[
-                  styles.optionButton,
-                  selectedDays.includes(day) && styles.optionButtonSelected,
-                ]}
-                onPress={() => toggleDay(day)}
-              >
-                <Text
-                  style={[
-                    styles.optionButtonText,
-                    selectedDays.includes(day) && styles.optionButtonTextSelected,
-                  ]}
-                >
-                  {day}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Mensagem Adicional (Opcional)</Text>
-          <TextInput
-            style={[styles.input, styles.messageInput]}
-            placeholder="Alguma informação adicional que queira compartilhar?"
             placeholderTextColor="#666"
-            value={mensagem}
-            onChangeText={setMensagem}
+          />
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Descrição"
+            value={descricao}
+            onChangeText={setDescricao}
             multiline
             numberOfLines={4}
+            placeholderTextColor="#666"
           />
+          <Text style={styles.daysTitle}>Dias da semana:</Text>
+          <View style={styles.daysContainer}>
+            {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.dayButton, diasSemana.includes(index + 1) && styles.selectedDay]}
+                onPress={() => handleDayToggle(index + 1)}
+              >
+                <Text style={styles.dayText}>{day}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+            <Text style={styles.submitButtonText}>Enviar Solicitação</Text>
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Icon name="send" size={20} color="#fff" style={styles.submitIcon} />
-              <Text style={styles.submitButtonText}>Enviar Solicitação</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
+      )}
     </SafeAreaView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#191919',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: "#191919",
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
-  headerTitle: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginLeft: 16,
-  },
-  content: {
+  loadingContainer: {
     flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#191919",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 16,
+  },
+  trainerItem: {
+    backgroundColor: "#333",
     padding: 16,
+    borderRadius: 8,
+    marginBottom: 8,
   },
-  section: {
-    marginBottom: 24,
+  selectedTrainer: {
+    backgroundColor: "#35AAFF",
   },
-  sectionTitle: {
-    color: '#fff',
+  trainerId: {
+    fontSize: 14,
+    color: "#CCCCCC",
+    marginBottom: 4,
+  },
+  trainerName: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 4,
+  },
+  trainerSpecialty: {
+    fontSize: 16,
+    color: "#FFFFFF",
+    marginBottom: 4,
+  },
+  trainerDetails: {
+    fontSize: 14,
+    color: "#CCCCCC",
+  },
+  emptyText: {
+    color: "#FFFFFF",
+    textAlign: "center",
+    marginTop: 20,
+  },
+  formContainer: {
+    marginTop: 20,
   },
   input: {
-    backgroundColor: '#333',
-    borderRadius: 8,
+    backgroundColor: "#333",
+    color: "#FFFFFF",
     padding: 12,
-    color: '#fff',
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: "top",
+  },
+  daysTitle: {
+    color: "#FFFFFF",
     fontSize: 16,
-    textAlignVertical: 'top',
+    marginBottom: 8,
   },
-  messageInput: {
-    minHeight: 100,
+  daysContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
   },
-  optionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  dayButton: {
+    backgroundColor: "#333",
+    padding: 8,
+    borderRadius: 4,
   },
-  optionButton: {
-    backgroundColor: '#333',
-    borderRadius: 8,
-    padding: 12,
-    minWidth: '30%',
-    alignItems: 'center',
+  selectedDay: {
+    backgroundColor: "#35AAFF",
   },
-  optionButtonSelected: {
-    backgroundColor: '#35AAFF',
-  },
-  optionButtonText: {
-    color: '#fff',
-    fontSize: 14,
-  },
-  optionButtonTextSelected: {
-    fontWeight: 'bold',
+  dayText: {
+    color: "#FFFFFF",
   },
   submitButton: {
-    backgroundColor: '#35AAFF',
-    borderRadius: 8,
+    backgroundColor: "#35AAFF",
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 32,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitIcon: {
-    marginRight: 8,
+    borderRadius: 8,
+    alignItems: "center",
   },
   submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "bold",
   },
-});
+})
 
-export default RequestTrainerScreen;
+export default RequestTrainerScreen
 
